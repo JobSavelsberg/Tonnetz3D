@@ -1,0 +1,15 @@
+enige wat aan deze versie die je me stuurde (voorlopig naampje: face-quadray) hoeft te veranderen:
+- er voor zorgen dat je niet terug kan over dezelfde zijde. Dus stel, je begint met CEGB, en je gaat naar EGBD (dus je beweegt over zijde EGB), dan zou het niet mogelijk zijn om vervolgens naar EGBF# te gaan (nog een beweging over EGB), want daar kwam je vandaan in de eerste stap. Misschien goed om die tetra dan grijs en onklikbaar te maken ofzo?
+- De mogelijkheid om 1 beweging terug te gaan/ongedaan te maken, en de optie om te resetten, dus helemaal terug naar CEGB.
+- de optie om de random omligging uit te zetten? Dus gewoon dat ie steeds alle noten speelt, binnen hetzelfde octaaf bijv. 
+
+een 2e versie van het programma [edge-quadray] die nét iets anders werkt:
+- ipv dat elke beweging 3 gemeenschappelijke tonen heeft, heeft elke beweging er twee. De bijgevoegde plaatjes geven aan hoe wordt bepaald waar de nieuwe noten van de string komen. Let me know of het duidelijk is!
+stap 1: op elke ribbe van de centrale tetra wordt één nieuw punt gemaakt (met eerstvolgende noot in de string: D), waardoor er een zijde ontstaat die naar buiten gericht is.
+stap 2: vervolgens wordt aan weerszijden van deze zijde een punt gemaakt waardoor er dus 2 tetras ontstaan. Dit zijn in principe dezelfde tetras, alleen gespiegeld. De nieuwe punten representeren allebei het volgende punt in de string: F#
+
+een 3e versie [vertex-quadray] die weer iets anders werkt:
+- je raadt het al, nu is er bij elke beweging maar 1 gemeenschappelijke toon. In het plaatje aangegeven hoe de nieuwe noten in dit geval worden ge-assigned aan nieuwe vertices.
+- de formatie van D, F# en A is als volgt bepaald: D ligt in het verlengde van ribbe EC, F# ligt in het verlengde van ribbe GC, en A in het verlengde van ribbe BC. Ter verduidelijking: van de noten EGB komt E het eerst in de string, dus daarom krijgt het punt wat tegenover E ligt in de nieuwe tetra (punt 1 in het plaatje) de eerstvolgende noot in de string: D.
+
+Heb ook de processing files erbij gevoegd zodat je een beetje de dinges rond kan draaien!
