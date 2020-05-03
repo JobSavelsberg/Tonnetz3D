@@ -7,10 +7,16 @@ public static final float farClip = 1000;
 public static final float distance = 300;
 public static float aspect;
 
+public enum Mode {
+  FACE,
+  EDGE,
+  VERTEX,
+}
+public static Mode mode = Mode.FACE;
 // removeOnNewRoot: whether the old tetras should be removed or not when a new root is created
-public static final boolean removeOnNewRoot = true; 
+public static boolean removeOnNewRoot = true; 
 // placeOnSide: whether only a single tetra should be connected to a single side of another tetra when clicked
-public static final boolean placeOnSide = false; 
+public static boolean placeOnSide = false; 
 
 
 /** 
@@ -37,6 +43,8 @@ Midi midi;
 RayPicker picker;
 
 ArrayList<Tetra> tetraStructure = new ArrayList<Tetra>();
+
+ArrayList<ArrayList<Tetra>> tetraStructureHistory = new ArrayList<ArrayList<Tetra>>();
 
 void setup() {
   size(1080, 720, P3D); 
@@ -171,24 +179,52 @@ void keyPressed() {
     case 's': tetraStructure.get(2).play(midi); break;
     case 'd': tetraStructure.get(3).play(midi); break;
     case 'f': tetraStructure.get(4).play(midi); break;
-    case 'z': makeNewRoot( tetraStructure.get(1), nextNote()); break;
-    case 'x': makeNewRoot( tetraStructure.get(2), nextNote()); break;
-    case 'c': makeNewRoot( tetraStructure.get(3), nextNote()); break;
-    case 'v': makeNewRoot( tetraStructure.get(4), nextNote()); break;
+    case 'r': reset(); break;
+    case 't': setRemoveOnNewRoot(!removeOnNewRoot); break;
+    case 'y': setPlaceOnSide(!placeOnSide); break;
+    case 'u': changeMode(Mode.FACE); break;
+    case 'i': changeMode(Mode.EDGE);break;
+    case 'o': changeMode(Mode.VERTEX); break;
   }
+
+}
+
+void reset(){
+  tetraStructureHistory.clear();
+  tetraStructure.clear();
+  currentNote = -1;
+  currentColor = -1;
+  createInitialTetra(22); // 22 = "D" before "F#"
+}
+
+
+void changeMode(Mode newMode){
+  mode = newMode;
+  println("Mode set to: " + mode);
+}
+
+void setRemoveOnNewRoot(boolean newRemoveOnNewRoot){
+  // TODO: fix bugs
+  removeOnNewRoot = newRemoveOnNewRoot; 
+  println("removeOnNewRoot: "+removeOnNewRoot);
+}
+
+void setPlaceOnSide(boolean newPlaceOnSide){
+  placeOnSide = newPlaceOnSide; 
+  println("placeOnSide: "+placeOnSide);
 }
 
 /*
 * The following functions and variables are used to loop through the sequences
 */
-int currentNote = 0;
+int currentNote = -1;
 public String nextNote(){ return nextNote(1); }
 public String nextNote(int i){
   currentNote += i;
   return getSequence(currentNote);
 }
 
-int currentColor = 0;
+int currentColor = -1;
 public color nextColor(){ return nextColor(1); }
 public color nextColor(int i){
   currentColor += i;

@@ -14,7 +14,7 @@
 *
 * Always connects at side D
 */
-class Tetra {
+class Tetra{
   private static final float size = 60; // Size of any of the tetrahedrons edges
   public PVector centroid;
   
@@ -201,7 +201,7 @@ class Tetra {
     root = true;
     if(Tonnetz3D.removeOnNewRoot){
       for(int i = 0; i < connected.length; i++){
-        connected[i] = false;
+        //connected[i] = false;
       }
     }
 
@@ -297,4 +297,5 @@ class Tetra {
     if(x < 0) return -1;
     return 0;
   }
+ 
 }
