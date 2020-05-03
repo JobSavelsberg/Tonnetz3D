@@ -14,9 +14,9 @@ public enum Mode {
 }
 public static Mode mode = Mode.FACE;
 // removeOnNewRoot: whether the old tetras should be removed or not when a new root is created
-public static boolean removeOnNewRoot = true; 
+public static boolean removeOnNewRoot = false; 
 // placeOnSide: whether only a single tetra should be connected to a single side of another tetra when clicked
-public static boolean placeOnSide = false; 
+public static boolean placeOnSide = true; 
 
 
 /** 
@@ -43,8 +43,7 @@ Midi midi;
 RayPicker picker;
 
 ArrayList<Tetra> tetraStructure = new ArrayList<Tetra>();
-
-ArrayList<ArrayList<Tetra>> tetraStructureHistory = new ArrayList<ArrayList<Tetra>>();
+TetraStructureHistory tetraStructureHistory;
 
 void setup() {
   size(1080, 720, P3D); 
@@ -60,6 +59,7 @@ void setup() {
   createInitialTetra(22); // 22 = "D" before "F#"
   
   lastTime = millis();
+  tetraStructureHistory = new TetraStructureHistory(tetraStructure);
 }
 
 /*
@@ -116,6 +116,7 @@ void mousePressed(){
       }else{
         makeNewRoot(picked.getTetra(), nextNote()); 
       }
+      tetraStructureHistory.push();
     }
   }
 }
@@ -185,18 +186,25 @@ void keyPressed() {
     case 'u': changeMode(Mode.FACE); break;
     case 'i': changeMode(Mode.EDGE);break;
     case 'o': changeMode(Mode.VERTEX); break;
+    case ',': tetraStructureHistory.previous(); resetCamera(); break;
+    case '.': tetraStructureHistory.next(); resetCamera(); break;
   }
 
 }
 
 void reset(){
-  tetraStructureHistory.clear();
+  tetraStructureHistory.reset();
   tetraStructure.clear();
   currentNote = -1;
   currentColor = -1;
   createInitialTetra(22); // 22 = "D" before "F#"
+  tetraStructureHistory.push();
 }
 
+void resetCamera(){
+  PVector newCentroid = tetraStructure.get(0).getCentroid();
+  cam.lookAt(newCentroid.x, newCentroid.y,newCentroid.z);  
+}
 
 void changeMode(Mode newMode){
   mode = newMode;

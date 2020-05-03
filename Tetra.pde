@@ -15,40 +15,41 @@
 * Always connects at side D
 */
 class Tetra{
-  private static final float size = 60; // Size of any of the tetrahedrons edges
-  public PVector centroid;
+  // Size of any of the tetrahedrons edges
+  private static final float size = 60; 
   
+  // Hardcoded number names for convenient and readable array indexing
+  static final int a = 0; static final int b = 1; static final int c = 2; static final int d = 3;
+  
+  // Tetrahedron constants
+  private final float invsqrt2 = 1/sqrt(2);
+  private final float tetraWidth = 2*sqrt(6)/3f;
+  
+  // Midi parameters
+  private static final int midiDuration = 1000; // milliseconds
+  private static final int midiVelocity = 90; // 0-127
+  private static final int midiStrumDelay = 70;
+  private static final int midiMinOctave = 4;
+  private static final int midiMaxOctave = 6;
   // Drawing
   private static final float strokeWeight = 3;
   private static final float textSize = 15;
   private static final float textOffset = 15;
+  private static final float colorAlpha = 127;
   private final color strokeColor = color(200,200,200);
   private color tetraColor = color(127);
-  private static final float colorAlpha = 127;
   
   // Used as a timer for pulse effects (when playing a tetra chord)
   private int pulseTime = 0;
   private int pulse = 0;
   private color pulseColor = color(255,255,255,0);
-  
-  // Midi parameters
-  private int midiDuration = 1000; // milliseconds
-  private int midiVelocity = 90; // 0-127
-  private int midiStrumDelay = 70;
-  private int midiMinOctave = 4;
-  private int midiMaxOctave = 6;
 
-  // Tetrahedron constants
-  private final float invsqrt2 = 1/sqrt(2);
-  private final float tetraWidth = 2*sqrt(6)/3f;
-  
-  // Hardcoded number names for convenient and readable array indexing
-  static final int a = 0; static final int b = 1; static final int c = 2; static final int d = 3;
   public boolean[] connected = {false,false,false,false}; 
   
   public String[] notes = new String[4];
   public PVector[] points = new PVector[4];
-  
+  public PVector centroid;
+
   private PShape tetraShape;
 
   private boolean visible = true;
@@ -296,6 +297,41 @@ class Tetra{
     if(x > 0) return 1;
     if(x < 0) return -1;
     return 0;
+  }
+  
+  /*
+  *  For cloning
+  */ 
+  public Tetra(PVector[] points, String[] notes, boolean[] connected, color tetraColor, int pulseTime, int pulse, color pulseColor, boolean visible, boolean root, boolean initial){
+    this.points = points;
+    this.notes = notes;
+    this.connected = connected;
+    this.tetraColor = tetraColor;
+    this.pulseTime = pulseTime;
+    this.pulse = pulse;
+    this.pulseColor = pulseColor;
+    this.visible = visible;
+    this.root = root;
+    this.initial = initial;
+    centroid = getCentroid();
+    makeShape();
+    setColor(tetraColor);
+  }
+  public Tetra getCopy(){
+    PVector[] pointsCopy = new PVector[4]; 
+    String[] notesCopy = new String[4];
+    boolean[] connectedCopy = new boolean[4];
+    for(int i = 0; i < 4; i++){
+      pointsCopy[i] = this.points[i].copy();
+      notesCopy[i] = this.notes[i];
+      connectedCopy[i] = this.connected[i];
+    }
+    
+    color tetraColorCopy = color(red(this.tetraColor), green(this.tetraColor), blue(this.tetraColor), alpha(this.tetraColor));
+    color pulseColorCopy = color(red(this.pulseColor), green(this.pulseColor), blue(this.pulseColor), alpha(this.pulseColor));
+
+    Tetra copy = new Tetra(pointsCopy, notesCopy, connectedCopy, tetraColorCopy, this.pulseTime, this.pulse, pulseColorCopy, this.visible, this.root, this.initial);
+    return copy;
   }
  
 }
