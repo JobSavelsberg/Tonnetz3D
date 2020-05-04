@@ -307,7 +307,7 @@ void thd_all(PVector [] t) {
             thd.vertex(t[7].x,t[7].y,t[7].z);
   
 // BLUE
-    /*
+    
     thd.fill(0,0,210,alpha);                //2,20,21,22
     thd.vertex(t[2].x,t[2].y,t[2].z);
     thd.vertex(t[20].x,t[20].y,t[20].z);
@@ -537,7 +537,7 @@ void thd_all(PVector [] t) {
             thd.vertex(t[25].x,t[25].y,t[25].z);
             thd.vertex(t[13].x,t[13].y,t[13].z);
             thd.vertex(t[7].x,t[7].y,t[7].z);
- */
+ 
   thd.endShape();
 }
 

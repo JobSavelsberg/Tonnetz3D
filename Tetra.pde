@@ -17,6 +17,12 @@
 
 public static boolean midiRandomize = true;
 
+enum EdgeConnectType{
+  EDGERIGHT,
+  EDGELEFT,
+  EDGESTRAIGHT  
+}
+  
 class Tetra{
   // Size of any of the tetrahedrons edges
   private static final float size = 60; 
@@ -27,6 +33,7 @@ class Tetra{
   // Tetrahedron constants
   private final float invsqrt2 = 1/sqrt(2);
   private final float tetraWidth = 2*sqrt(6)/3f;
+  private final float faceHeight = 2*sqrt(0.75f);
   
   // Midi parameters
   private static final int midiDuration = 1000; // milliseconds
@@ -47,8 +54,14 @@ class Tetra{
   private int pulse = 0;
   private color pulseColor = color(255,255,255,0);
 
-  public boolean[] connected = {false,false,false,false}; 
+  public boolean[] connectedFace = {false,false,false,false}; 
+  // ab, bc, ca, ad, bd, cd
+  public boolean[] connectedEdge = {false,false,false,false, false, false}; 
+  public boolean[] connectedVertex = {false,false,false,false}; 
   
+  public boolean[] showNote = {true, true, true, true}; 
+
+
   public String[] notes = new String[4];
   public PVector[] points = new PVector[4];
   public PVector centroid;
@@ -75,7 +88,7 @@ class Tetra{
   }
   
   public Tetra(Tetra root, int[] side, String addNote) {
-    if(root.connected[sideArrayToVertex(side)]){
+    if(root.connectedFace[sideArrayToVertex(side)]){
       new Exception("Side is already connected").printStackTrace();
     }
     notes[a] = root.notes[side[c]];
@@ -97,8 +110,59 @@ class Tetra{
     points[d] = PVector.add(faceMiddle, invNormal.normalize().mult(tetraWidth*size));
     makeShape();
     
-    connected[d] = true;
-    root.connected[sideArrayToVertex(side)] = true;
+    connectedFace[d] = true;
+    root.connectedFace[sideArrayToVertex(side)] = true;
+    
+    pulse(color(255,255,255,0),500);
+  }
+  
+  /*   
+  *   D C is a single point aka E
+  *           E                           C--E--D
+  * LEFT     D C       RIGHT               \   /
+  *      C    |    D                        \ / 
+  *           A                              A
+  *         / B \    B is under A          / B \
+  *        D-----C                        D-----C
+  */      
+  public Tetra(Tetra root, Set<Integer> edge, EdgeConnectType edgeConnectType, String addNoteA, String addNoteB){
+    points[a] = root.points[(int) edge.toArray()[0]];
+    points[b] = root.points[(int) edge.toArray()[1]];
+    notes[a] = root.notes[(int) edge.toArray()[0]];
+    notes[b] = root.notes[(int) edge.toArray()[1]];
+  
+    PVector ABmiddle = getEdgeMiddle(verticesToEdge(a,b));
+    PVector rootCentroid = root.getCentroid();
+    PVector Edir = PVector.sub(ABmiddle, rootCentroid).normalize();
+    PVector E = PVector.add(ABmiddle, PVector.mult(Edir, size * faceHeight));
+    //normal will point left
+    PVector N = getNormal(points[a], points[b], E);
+    PVector lastVertex;
+    if(edgeConnectType == EdgeConnectType.EDGERIGHT){
+      lastVertex = PVector.add(getFaceMiddle(points[a], points[b], E), N.mult(-tetraWidth*size));
+      points[c] = E;
+      notes[c] = addNoteA;
+      points[d] = lastVertex;
+      notes[d] = addNoteB;
+    }else if(edgeConnectType == EdgeConnectType.EDGELEFT){
+      lastVertex = PVector.add(getFaceMiddle(points[a], points[b], E), N.mult(tetraWidth*size));
+      points[c] = lastVertex;
+      notes[c] = addNoteB; //<>//
+      points[d] = E;
+      notes[d] = addNoteA;
+    }else if(edgeConnectType == EdgeConnectType.EDGESTRAIGHT){
+      points[c] = PVector.add(E,PVector.mult(N, size)); 
+      notes[c] = addNoteA;
+      points[d] = PVector.add(E,PVector.mult(N, -size)); 
+      notes[d] = addNoteB;
+    }
+    
+    centroid = getCentroid();
+        
+    makeShape();
+    
+    connectedEdge[0] = true;
+    root.setEdgeConnected(edge, true);
     
     pulse(color(255,255,255,0),500);
   }
@@ -157,20 +221,24 @@ class Tetra{
     float[] x = new float[4];
     float[] y = new float[4];
     for(int i = 0; i < notes.length; i++){
-      if(!root && i!=d) continue;
-      PVector oD = PVector.sub(points[i], centroid).normalize(); // Offset Direction
-      x[i] = screenX(points[i].x+oD.x*textOffset, points[i].y+oD.y*textOffset, points[i].z+oD.z*textOffset);
-      y[i] = screenY(points[i].x+oD.x*textOffset, points[i].y+oD.y*textOffset, points[i].z+oD.z*textOffset);
+      if(root || i == d || (mode == Mode.EDGE)){
+        PVector oD = PVector.sub(points[i], centroid).normalize(); // Offset Direction
+        x[i] = screenX(points[i].x+oD.x*textOffset, points[i].y+oD.y*textOffset, points[i].z+oD.z*textOffset);
+        y[i] = screenY(points[i].x+oD.x*textOffset, points[i].y+oD.y*textOffset, points[i].z+oD.z*textOffset);
+      }
     }
     float[] camPosition = cam.getPosition();
     PVector camPosVec = new PVector(camPosition[0],camPosition[1],camPosition[2]);
     cam.beginHUD();
     for(int i = 0; i < notes.length; i++){
-      if(Tonnetz3D.removeOnNewRoot){
-        if(!root && i!=d) {continue;}
-      }else{
-        if(!initial && i!= d) {continue;}
+      if(mode == Mode.FACE){
+        if(Tonnetz3D.removeOnNewRoot){
+          if(!root && i!=d) {continue;}
+        }else{
+          if(!initial && i!= d) {continue;}
+        }
       }
+      
       float zoomedTextSize = textSize * farClip / PVector.dist(points[i], camPosVec);
       textSize(zoomedTextSize);
       text(notes[i], x[i], y[i]);
@@ -209,7 +277,7 @@ class Tetra{
   public void makeRoot(){
     root = true;
     if(Tonnetz3D.removeOnNewRoot){
-      for(int i = 0; i < connected.length; i++){
+      for(int i = 0; i < connectedFace.length; i++){
         //connected[i] = false;
       }
     }
@@ -263,15 +331,48 @@ class Tetra{
   }
   
   public PVector getNormal(int[] side){
-    return PVector.sub(points[side[b]],points[side[c]]).cross(PVector.sub(points[side[a]],points[side[c]])).normalize();
+    return getNormal(points[side[a]],points[side[b]],points[side[c]]);
+  }
+  public PVector getNormal(PVector a, PVector b, PVector c){
+    return PVector.sub(b,c).cross(PVector.sub(a,c)).normalize();
   }
   
   public PVector getCentroid(){
       return PVector.add(PVector.add(points[a],points[b]), PVector.add(points[c],points[d])).div(4);
   }
   public PVector getFaceMiddle(int side){
-     return PVector.add(PVector.add(points[getSide(side)[a]],points[getSide(side)[b]]), points[getSide(side)[c]]).div(3); 
+     return getFaceMiddle(points[getSide(side)[a]], points[getSide(side)[b]], points[getSide(side)[c]]);
   }
+  public PVector getFaceMiddle(PVector a, PVector b, PVector c){
+     return PVector.add(PVector.add(a,b), c).div(3); 
+  }
+  public PVector getEdgeMiddle(Set<Integer> edge){
+    return PVector.add(points[(int) edge.toArray()[0]], points[(int) edge.toArray()[1]]).div(2);
+  }
+  
+  public ArrayList<Set<Integer>> getEdges(){
+    ArrayList<Set<Integer>> edgeList = new ArrayList<Set<Integer>>();
+    Set<Integer> edge0 = new HashSet<Integer>();
+    edge0.add(a);edge0.add(b);
+    edgeList.add(edge0);
+    Set<Integer> edge1 = new HashSet<Integer>();
+    edge1.add(b);edge1.add(c);
+    edgeList.add(edge1);
+    Set<Integer> edge2 = new HashSet<Integer>();
+    edge2.add(c);edge2.add(a);
+    edgeList.add(edge2);
+    Set<Integer> edge3 = new HashSet<Integer>();
+    edge3.add(a);edge3.add(d);
+    edgeList.add(edge3);
+    Set<Integer> edge4 = new HashSet<Integer>();
+    edge4.add(b);edge4.add(d);
+    edgeList.add(edge4);
+    Set<Integer> edge5 = new HashSet<Integer>();
+    edge5.add(c);edge5.add(d);
+    edgeList.add(edge5);
+    return edgeList;    
+  }
+  
   public int[] getSide(int side){ return vertexToSideArray(side); }
   public int[] vertexToSideArray(int side){
     switch(side){
@@ -301,6 +402,49 @@ class Tetra{
     return 6 - sum;
   }
   
+  public boolean getEdgeConnected(Set<Integer> edge){
+    return connectedEdge[edgeToEdgeIndex(edge)];  
+  }
+  
+  public void setEdgeConnected(Set<Integer> edge, boolean connected){
+    connectedEdge[edgeToEdgeIndex(edge)] = connected; 
+  }
+  
+  public Set<Integer> verticesToEdge(int a, int b){
+    Set<Integer> edge = new HashSet<Integer>();
+    edge.add(a);
+    edge.add(b);
+    return edge;
+  }
+  // ab, bc, ca, ad, bd, cd
+  public int edgeToEdgeIndex(Set<Integer> edge){
+    if(edge.contains(a) && edge.contains(b)){
+      return 0;
+    }else if(edge.contains(b) && edge.contains(c)){
+      return 1;
+    }else if(edge.contains(c) && edge.contains(a)){
+      return 2;
+    }else if(edge.contains(a) && edge.contains(d)){
+      return 3;
+    }else if(edge.contains(b) && edge.contains(d)){
+      return 4;
+    }else if(edge.contains(c) && edge.contains(d)){
+      return 5;
+    }
+    return -1;
+  }
+  
+  /*
+  *    Defined such that ab will return cd in a triangle defined by clockwise abc
+  *                      ba -> dc
+  *                      cb -> da
+  *                      bc -> ad
+  *                      db -> ac
+  *                      bd -> ac
+  */ 
+  //NOT NECESSARY
+  //public int[] getOppositesInOrder(Set<Integer> side){}
+  
   private float sign(float x){
     if(x > 0) return 1;
     if(x < 0) return -1;
@@ -310,10 +454,13 @@ class Tetra{
   /*
   *  For cloning
   */ 
-  public Tetra(PVector[] points, String[] notes, boolean[] connected, color tetraColor, int pulseTime, int pulse, color pulseColor, boolean visible, boolean root, boolean initial){
+  public Tetra(PVector[] points, String[] notes, boolean[] showNote, boolean[] connectedFace, boolean[] connectedEdge, boolean[] connectedVertex, color tetraColor, int pulseTime, int pulse, color pulseColor, boolean visible, boolean root, boolean initial){
     this.points = points;
     this.notes = notes;
-    this.connected = connected;
+    this.showNote = showNote;
+    this.connectedFace = connectedFace;
+    this.connectedEdge = connectedEdge;
+    this.connectedVertex = connectedVertex;
     this.tetraColor = tetraColor;
     this.pulseTime = pulseTime;
     this.pulse = pulse;
@@ -328,17 +475,16 @@ class Tetra{
   public Tetra getCopy(){
     PVector[] pointsCopy = new PVector[4]; 
     String[] notesCopy = new String[4];
-    boolean[] connectedCopy = new boolean[4];
+
     for(int i = 0; i < 4; i++){
       pointsCopy[i] = this.points[i].copy();
       notesCopy[i] = this.notes[i];
-      connectedCopy[i] = this.connected[i];
     }
     
     color tetraColorCopy = color(red(this.tetraColor), green(this.tetraColor), blue(this.tetraColor), alpha(this.tetraColor));
     color pulseColorCopy = color(red(this.pulseColor), green(this.pulseColor), blue(this.pulseColor), alpha(this.pulseColor));
 
-    Tetra copy = new Tetra(pointsCopy, notesCopy, connectedCopy, tetraColorCopy, this.pulseTime, this.pulse, pulseColorCopy, this.visible, this.root, this.initial);
+    Tetra copy = new Tetra(pointsCopy, notesCopy, showNote.clone(), connectedFace.clone(), connectedEdge.clone(), connectedVertex.clone(), tetraColorCopy, this.pulseTime, this.pulse, pulseColorCopy, this.visible, this.root, this.initial);
     return copy;
   }
  
