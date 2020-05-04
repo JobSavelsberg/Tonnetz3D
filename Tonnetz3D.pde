@@ -14,9 +14,9 @@ public enum Mode {
 }
 public static Mode mode = Mode.FACE;
 // removeOnNewRoot: whether the old tetras should be removed or not when a new root is created
-public static boolean removeOnNewRoot = false; 
+public static boolean removeOnNewRoot = true; 
 // placeOnSide: whether only a single tetra should be connected to a single side of another tetra when clicked
-public static boolean placeOnSide = true; 
+public static boolean placeOnSide = false; 
 
 
 /** 
@@ -114,7 +114,9 @@ void mousePressed(){
       if(!removeOnNewRoot && placeOnSide && picked.getSide()!=-1){
         placeOnSide(picked.getTetra(), picked.getSide(), nextNote());
       }else{
-        makeNewRoot(picked.getTetra(), nextNote()); 
+        if(picked.getTetra().connected[picked.getSide()] == false){
+          makeNewRoot(picked.getTetra(), nextNote()); 
+        }
       }
       tetraStructureHistory.push();
     }
@@ -165,12 +167,17 @@ void makeNewRoot(Tetra root, String nextNote){
 * only used when removeOnNewRoot is false
 */
 void placeOnSide(Tetra root, int side, String nextNote){
-  PVector centroid = root.centroid;
-  cam.lookAt(centroid.x, centroid.y, centroid.z);
-  
-  Tetra t = new Tetra(root, root.getSide(side), nextNote);
-  t.setColor(nextColor());
-  tetraStructure.add(t);
+  if(!root.connected[side]){
+    PVector centroid = root.centroid;
+    cam.lookAt(centroid.x, centroid.y, centroid.z);
+    
+    Tetra t = new Tetra(root, root.getSide(side), nextNote);
+    t.setColor(nextColor());
+    tetraStructure.add(t);
+  }else{
+    println("Can't connect to this side");  
+  }
+
 }
 
 void keyPressed() {
@@ -186,6 +193,7 @@ void keyPressed() {
     case 'u': changeMode(Mode.FACE); break;
     case 'i': changeMode(Mode.EDGE);break;
     case 'o': changeMode(Mode.VERTEX); break;
+    case 'm': midiRandomize = !midiRandomize; break;
     case ',': tetraStructureHistory.previous(); resetCamera(); break;
     case '.': tetraStructureHistory.next(); resetCamera(); break;
   }

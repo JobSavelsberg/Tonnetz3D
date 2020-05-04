@@ -14,6 +14,9 @@
 *
 * Always connects at side D
 */
+
+public static boolean midiRandomize = true;
+
 class Tetra{
   // Size of any of the tetrahedrons edges
   private static final float size = 60; 
@@ -27,7 +30,7 @@ class Tetra{
   
   // Midi parameters
   private static final int midiDuration = 1000; // milliseconds
-  private static final int midiVelocity = 90; // 0-127
+  private static final int midiVelocity = 70; // 0-127
   private static final int midiStrumDelay = 70;
   private static final int midiMinOctave = 4;
   private static final int midiMaxOctave = 6;
@@ -176,7 +179,12 @@ class Tetra{
   }
 
   public void play(Midi midi) {
-    midi.strumChord(notes, midiVelocity, midiDuration, midiStrumDelay, midiMinOctave, midiMaxOctave);
+    if(midiRandomize){
+      midi.strumChord(notes, midiVelocity, midiDuration, midiStrumDelay, midiMinOctave, midiMaxOctave);
+    }else{
+      int octave = (midiMinOctave + midiMaxOctave) / 2;
+      midi.playChord(notes, octave, midiVelocity, midiDuration);
+    }
     pulse(color(255,255,255,255), midiDuration);
   }
   
