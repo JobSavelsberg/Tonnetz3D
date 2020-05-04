@@ -1,13 +1,14 @@
+import java.util.*;
+
 class RayPicker{
   public static final float step = 5f;
-  public static final boolean march = false;
   PeasyCam cam;
   
   public RayPicker(PeasyCam cam){
     this.cam = cam;
   }
   
-  public TetraSide pick(float x, float y, ArrayList<Tetra> tetras){ 
+  public TetraElement pick(float x, float y,  ArrayList<Tetra> tetras, Tonnetz3D.Mode mode){
     // --- get camera target position
     float a[] = cam.getLookAt().clone();
     PVector camTarget = new PVector(a[0], a[1], a[2]);
@@ -39,21 +40,21 @@ class RayPicker{
     
     PVector ray = PVector.sub(mouseVector,camPosition).normalize();
     
-    if(march){
-      return new TetraSide(march(ray, camPosition, tetras), -1);
-    }else{
-      TetraSide tetraSide = tetraIntersect(ray, camPosition, tetras);
-      if(tetraSide != null){
-        return tetraSide;
+    TetraIntersect tetraIntersect = tetraIntersect(ray, camPosition, tetras);  
+    if(tetraIntersect != null){
+      switch(mode){
+        case FACE: return pickFace(tetraIntersect);
+        case EDGE: return pickEdge(tetraIntersect);
+        case VERTEX: return pickVertex(tetraIntersect);
       }
-      
     }
     return null; 
+    
   }
   
   // P=O+tR
   // Ax+By+Cz+D=0
-  public TetraSide tetraIntersect(PVector ray, PVector camPos, ArrayList<Tetra> tetras){
+  public TetraIntersect tetraIntersect(PVector ray, PVector camPos, ArrayList<Tetra> tetras){
     PVector closestP = PVector.add(camPos, PVector.mult(ray, farClip));
     TetraSide closestTetraSide = null;
 
@@ -78,7 +79,10 @@ class RayPicker{
         }
       }
     }
-    return closestTetraSide;
+    if(closestTetraSide != null){
+      return new TetraIntersect(closestTetraSide, closestP);
+    }
+    return null;
   }
   
   public boolean triangleIntersects(PVector[] points, PVector N, PVector P){
@@ -96,20 +100,51 @@ class RayPicker{
     return false;
   }
   
-  
-  
-  public Tetra march(PVector ray, PVector camPosition, ArrayList<Tetra> tetras){
-    for(float i = 0; i < farClip; i+= step){
-      PVector worldPoint = PVector.add(PVector.mult(ray, i),camPosition);
-      for(Tetra t: tetras){
-        if(t.isInside(worldPoint)){
-          return t;
-        }
+  private TetraVertex pickVertex(TetraIntersect tetraIntersect){
+    Tetra tetra = tetraIntersect.getTetra();
+    int[] side = tetra.getSide(tetraIntersect.getSide());
+    PVector[] points = tetra.getSidePoints(tetraIntersect.getSide());
+    int smallestVertex = 0;
+    float smallestDistance = MAX_FLOAT;
+    for(int i = 0; i < 3; i++){
+      float dist = PVector.dist(tetraIntersect.getIntersectionPoint(),points[i]);
+      if(dist < smallestDistance){
+        smallestVertex = side[i];
+        smallestDistance = dist;
       }
     }
-    return null;
+    return new TetraVertex(tetraIntersect.getTetra(), smallestVertex);
+  }
+ 
+  // Since we are only working with equilateral triangles, we can find the smallest distance to two of the vertices
+  private TetraEdge pickEdge(TetraIntersect tetraIntersect){
+    Set<Integer> edge = new HashSet<Integer>();
+    
+    Tetra tetra = tetraIntersect.getTetra();
+    int[] side = tetra.getSide(tetraIntersect.getSide());
+    PVector[] points = tetra.getSidePoints(tetraIntersect.getSide());
+    
+    int biggestSideIndex = 0;
+    float biggestDistance = 0;
+    for(int i = 0; i < 3; i++){
+      float dist = PVector.dist(tetraIntersect.getIntersectionPoint(),points[i]);
+      if(dist > biggestDistance){
+        biggestSideIndex = i;
+        biggestDistance = dist;
+      }
+    }
+    for(int i = 0; i < 3; i++){
+      if(i!=biggestSideIndex){
+        edge.add(side[i]);  
+      }
+    }
+    return new TetraEdge(tetraIntersect.getTetra(), edge);
   }
   
+  private TetraSide pickFace(TetraIntersect tetraIntersect){    
+    return tetraIntersect;
+  }
+ 
   
   public PVector upVector(){
       PVector up = new PVector(0,-1,0);
@@ -127,21 +162,80 @@ class RayPicker{
       return up.normalize();
   }
   
-  final class TetraSide {
+  
+  public class TetraElement{
     private final Tetra tetra;
+    public TetraElement(Tetra tetra){
+      this.tetra = tetra;  
+    }
+    public Tetra getTetra() {
+        return tetra;
+    }
+  }
+  
+  public class TetraVertex extends TetraElement{
+    private final int vertex;
+    
+    public TetraVertex(Tetra tetra, int vertex){
+      super(tetra);
+      this.vertex = vertex;
+    }
+    
+    public int getVertex() {
+        return vertex;
+    }
+  }
+  
+  public class TetraEdge extends TetraElement{
+    private final Set<Integer> edge;
+    
+    public TetraEdge(Tetra tetra, int vertexA, int vertexB){
+      super(tetra);
+      this.edge = new HashSet<Integer>();
+      this.edge.add((Integer) vertexA);
+      this.edge.add((Integer) vertexB);
+    }
+    
+    public TetraEdge(Tetra tetra, Set<Integer> edge){
+      super(tetra);
+      this.edge = edge;
+    }
+
+    public Set<Integer> getEdge() {
+        return edge;
+    }
+  }
+  
+  public class TetraSide extends TetraElement{
     private final int side;
 
     public TetraSide(Tetra tetra, int side) {
-        this.tetra = tetra;
+        super(tetra);
         this.side = side;
-    }
-
-    public Tetra getTetra() {
-        return tetra;
     }
 
     public int getSide() {
         return side;
     }
-}
+  }
+  
+  class TetraIntersect extends TetraSide{
+    private final PVector intersectionPoint;
+    
+    public TetraIntersect(Tetra tetra, int side, PVector intersectionPoint){
+      super(tetra,side);
+      this.intersectionPoint = intersectionPoint;
+    }
+    
+    public TetraIntersect(TetraSide tetraSide, PVector intersectionPoint){
+      super(tetraSide.getTetra(),tetraSide.getSide());
+      this.intersectionPoint = intersectionPoint;
+    }
+    
+    public PVector getIntersectionPoint(){
+      return intersectionPoint;  
+    }
+  }
+  
+
 }

@@ -103,22 +103,28 @@ void draw() {
 }
 
 
-RayPicker.TetraSide picked = null;
+RayPicker.TetraElement picked = null;
 void mousePressed(){ 
-  picked = picker.pick(mouseX,mouseY, tetraStructure);
+  picked = picker.pick(mouseX,mouseY, tetraStructure, mode);
   if(picked != null && picked.getTetra() != null){
     if(mouseButton==LEFT){
       picked.getTetra().play(midi);
     }else if(mouseButton==RIGHT){
       cam.setActive(false);
-      if(!removeOnNewRoot && placeOnSide && picked.getSide()!=-1){
-        placeOnSide(picked.getTetra(), picked.getSide(), nextNote());
-      }else{
-        if(picked.getTetra().connected[picked.getSide()] == false){
-          makeNewRoot(picked.getTetra(), nextNote()); 
+      if(mode == Mode.FACE){
+        if(!removeOnNewRoot && placeOnSide){
+          placeOnSide(picked.getTetra(), ((RayPicker.TetraSide) picked).getSide(), nextNote());
+        }else if(picked.getTetra().connected[((RayPicker.TetraSide) picked).getSide()] == false){
+            makeNewRoot(picked.getTetra(), nextNote()); 
         }
+        tetraStructureHistory.push();
       }
-      tetraStructureHistory.push();
+      if(mode == Mode.EDGE){
+        //placeOnEdge();
+      }
+      if(mode == Mode.VERTEX){
+        //placeOnVertex();
+      }
     }
   }
 }
