@@ -3,7 +3,7 @@ import peasy.*;
 // Camera parameters and variables
 public static final float fov = PI/3;  // field of view
 public static final float nearClip = 1;
-public static final float farClip = 1000;
+public static final float farClip = 5000;
 public static final float distance = 300;
 public static float aspect;
 
@@ -12,6 +12,7 @@ public enum Element {
 }
 // removeOnNewRoot: whether the old tetras should be removed or not when a new root is created
 public static boolean removeOnNewRoot; 
+public static boolean keepPreviousRoot;
 // placeSingle: whether only a single tetra should be connected to a single face of another tetra when clicked
 public static boolean placeSingle; 
 // The placemode is a set of combinations of the above booleans, giving a better interface for mode checks
@@ -20,13 +21,13 @@ public enum PlaceMode {
 }
 void setPlaceMode(PlaceMode mode){
   switch(mode){
-    case BUILD: removeOnNewRoot = false; placeSingle = true; break;
-    case EXPLORE: removeOnNewRoot = true; placeSingle = false; break;
+    case BUILD: removeOnNewRoot = false; keepPreviousRoot = false; placeSingle = true; break;
+    case EXPLORE: removeOnNewRoot = true; keepPreviousRoot = true; placeSingle = false; break;
   }
   placeMode = mode;
 }
 
-public static Element element = Element.FACE;
+public static Element element = Element.VERTEX;
 public static PlaceMode placeMode;
 
 public static boolean edgeConnectStraight = true;
@@ -37,10 +38,14 @@ public static boolean edgeConnectStraight = true;
 *  But is changable, it loops through the sequence using nextNote()
 *  Looping through the sequence with bigger steps can be done with nextNote(stepSize)
 */
-static final String[] seq = new String[]{
+static final String[] seq3rds = new String[]{
   "A", "C#", "E", "G#", "B", "D#", "F#", "A#", "C#", "F", "G#",
   "C", "D#", "G", "A#", "D", "F", "A", "C", "E", "G", "B", "D", "F#"
 }; 
+static final String[] seq5ths = new String[]{
+  "A", "E", "B", "F#", "C#", "G#", "D#", "A#", "F", "C", "G", "D"
+}; 
+static final String[] seq = seq3rds;
 
 /*
 * Similar to the sequence of notes a sequence of colors is used to make new generated triangles have different colors
@@ -56,6 +61,7 @@ RayPicker picker;
 
 ArrayList<Tetra> tetraStructure = new ArrayList<Tetra>();
 TetraStructureHistory tetraStructureHistory;
+ArrayList<NoteText> noteTexts = new ArrayList<NoteText>();
 
 void setup() {
   size(1080, 720, P3D); 
@@ -86,6 +92,7 @@ void createInitialTetra(int nextNoteInSequence) {
   Tetra root = new Tetra(nextNoteInSequence);
   tetraStructure.add(root);
   makeNewRoot(root);
+  root.setRoot(true);
 }
 
 int lastTime = 0;
@@ -114,10 +121,13 @@ void draw() {
   for(Tetra tetra : tetraStructure){
     tetra.drawNotes(cam);
   }
-  drawDebugSphere();
+  drawDebugSphere();  
 }
 
-
+void drawNote(String note, float size, float x, float y){
+  textSize(size);
+  text(note, x, y);
+}
 TetraElement picked = null;
 void mousePressed(){ 
   picked = picker.pick(mouseX,mouseY, tetraStructure, element);
@@ -146,18 +156,21 @@ void mouseReleased(){
 void makeNewRoot(Tetra root){
   PVector centroid = root.centroid;
   cam.lookAt(centroid.x, centroid.y, centroid.z);
-  root.makeRoot();
+  root.setRoot(true);
   
   if(removeOnNewRoot){
     removeAllButRoot(root);
-  }else{
+    //Remove root status of previous root
+    if(keepPreviousRoot){
+      tetraStructure.get(0).setRoot(false);    
+    }
+  }
     // Swap previous root at index 0 with new root
     if(tetraStructure.size() > 1){
       Tetra previousRoot = tetraStructure.get(0);
       tetraStructure.set(0, root);
       tetraStructure.add(previousRoot);
     }
-  }
   
   if(element == Element.FACE){
     for(int face : root.getFaces()){
@@ -169,7 +182,7 @@ void makeNewRoot(Tetra root){
     }
   }else if(element == Element.VERTEX){
     for(int vertex : root.getVertices()){
-      placeOnVertex(root, vertex);
+      placeOnVertex(root, vertex, true);
     }
   } 
   tetraStructureHistory.push();
@@ -179,7 +192,7 @@ void placeNewTetra(TetraElement picked){
   switch(element){
     case FACE: placeOnFace((TetraFace) picked); break;
     case EDGE: placeOnEdge((TetraEdge) picked); break;
-    case VERTEX: placeOnVertex((TetraVertex) picked); break;
+    case VERTEX: placeOnVertex((TetraVertex) picked, false); break;
   }
   tetraStructureHistory.push();
 }
@@ -213,20 +226,37 @@ void placeOnEdge(Tetra root, Set<Integer> edge){
   }
 }
 
-void placeOnVertex(TetraVertex tetraVertex){ placeOnVertex(tetraVertex.getTetra(), tetraVertex.getVertex()); }
-void placeOnVertex(Tetra root, int vertex){
+void placeOnVertex(TetraVertex tetraVertex, boolean addLevel){ placeOnVertex(tetraVertex.getTetra(), tetraVertex.getVertex(), addLevel); }
+void placeOnVertex(Tetra root, int vertex, boolean addLevel){
   color c = nextColor();
   if(!root.getVertexConnected(vertex)){
-    //TODO
+    Tetra vertexTetra = new Tetra(root, vertex);
+    vertexTetra.setColor(c);
+    tetraStructure.add(vertexTetra);
+    if(addLevel){
+      for(int side : vertexTetra.getFace(0)){
+        //c = nextColor();
+        Tetra sideTetra = new Tetra(vertexTetra, vertexTetra.getFace(side));
+        sideTetra.setColor(c);
+        tetraStructure.add(sideTetra);
+      }
+      for(int topVertex: vertexTetra.getFace(0)){
+        Set<Integer> edge = new HashSet<Integer>();
+        edge.add(topVertex); edge.add(0);
+        //c = nextColor();
+        Tetra sideTetra = new Tetra(vertexTetra, edge, EdgeConnectType.EDGESTRAIGHT);
+        sideTetra.setColor(c);
+        tetraStructure.add(sideTetra);
+      }
+    }
   }
 }
 
-
 void removeAllButRoot(Tetra root){
  for(int i = tetraStructure.size()-1; i >= 0 ; i--){
-    if(tetraStructure.get(i) != root){
-      tetraStructure.remove(i);
-    }
+    if(tetraStructure.get(i) == root) continue;
+    if(keepPreviousRoot && tetraStructure.get(i).isRoot()) continue;
+    tetraStructure.remove(i);
   }  
 }
 

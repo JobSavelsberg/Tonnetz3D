@@ -31,9 +31,10 @@ class Tetra{
   static final int a = 0; static final int b = 1; static final int c = 2; static final int d = 3;
   
   // Tetrahedron constants
-  private final float invsqrt2 = 1/sqrt(2);
-  private final float tetraWidth = 2*sqrt(6)/3f;
+  private final float invsqrt2 = 1f/sqrt(2f);
+  private final float tetraWidth = 2*sqrt(6f)/3f;
   private final float faceHeight = 2*sqrt(0.75f);
+  private final float midEdgeToOppositeMidEdge = sqrt(faceHeight*faceHeight - 1f);
   
   // Midi parameters
   private static final int midiDuration = 1000; // milliseconds
@@ -45,9 +46,10 @@ class Tetra{
   private static final float strokeWeight = 3;
   private static final float textSize = 15;
   private static final float textOffset = 15;
-  private static final float colorAlpha = 127;
+  private static final float colorAlpha = 169;
   private final color strokeColor = color(200,200,200);
   private color tetraColor = color(127);
+  private static final boolean useToneColorMapping = true;
   
   // Used as a timer for pulse effects (when playing a tetra chord)
   private int pulseTime = 0;
@@ -119,11 +121,11 @@ class Tetra{
   *  Construct tetra on root's edge
   * 
   *   D C is a single point aka E
-  *           E                           C--E--D
+  *           E                           C--F--D
   * LEFT     D C       RIGHT               \   /
   *      C    |    D                        \ / 
   *           A                              A
-  *         / B \    B is under A          / B \
+  *         / B \    B is behind A         / B \
   *        D-----C                        D-----C
   */      
   public Tetra(Tetra root, Set<Integer> edge, EdgeConnectType edgeConnectType){
@@ -139,6 +141,7 @@ class Tetra{
     PVector rootCentroid = root.getCentroid();
     PVector Edir = PVector.sub(ABmiddle, rootCentroid).normalize();
     PVector E = PVector.add(ABmiddle, PVector.mult(Edir, size * faceHeight));
+    PVector F = PVector.add(ABmiddle, PVector.mult(Edir, size * midEdgeToOppositeMidEdge));
     //normal will point left
     PVector N = getNormal(points[a], points[b], E);
     PVector lastVertex;
@@ -155,9 +158,9 @@ class Tetra{
       points[d] = E;
       notes[d] = noteA;
     }else if(edgeConnectType == EdgeConnectType.EDGESTRAIGHT){
-      points[c] = PVector.add(E,PVector.mult(N, size)); 
+      points[c] = PVector.add(F,PVector.mult(N, size)); 
       notes[c] = noteA;
-      points[d] = PVector.add(E,PVector.mult(N, -size)); 
+      points[d] = PVector.add(F,PVector.mult(N, -size)); 
       notes[d] = noteB;
     }
     
@@ -165,17 +168,38 @@ class Tetra{
         
     makeShape();
     
-    connectedEdge[0] = true;
+    connectedEdge[a] = true;
     root.setEdgeConnected(edge, true);
     
     pulse(color(255,255,255,0),500);
   }
   
   /*
-  *  Construct tetra on root's vertex
+  *  Construct tetra on root's vertex (A)
+  *
+  *           B                     D-----C 
+  *         / A \    A is behind B   \ A /
+  *        C-----D                     B
   */
   public Tetra(Tetra root, int vertex){
+    points[a] = root.points[vertex];
+    notes[a] = root.notes[vertex]; 
+    int[] oppositeFace = root.getFace(vertex);
+    for(int i = 0; i < 3; i++){
+      PVector point = root.points[oppositeFace[i]];
+      PVector mirrored = PVector.add(points[a], PVector.sub(points[a], point));
+      points[1+i] = mirrored;
+      notes[1+i] = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence + i);
+    }
+    nextNoteInSequence = root.nextNoteInSequence +4;
+    centroid = getCentroid();
+        
+    makeShape();
     
+    connectedVertex[a] = true;
+    root.setVertexConnected(vertex, true);
+    
+    pulse(color(255,255,255,0),500);
   }
 
   
@@ -221,7 +245,6 @@ class Tetra{
   public void draw(){
     if(visible && tetraShape != null){
       shape(tetraShape);
-      
     }
   }
   
@@ -245,13 +268,13 @@ class Tetra{
     for(int i = 0; i < notes.length; i++){
       if(element == Element.FACE){
         if(Tonnetz3D.removeOnNewRoot){
-          if(!root && i!=d) {continue;}
+          if(!root && i!=d) continue;
         }else{
-          if(!initial && i!= d) {continue;}
+          if(!initial && i!= d) continue;
         }
       }
       
-      float zoomedTextSize = textSize * farClip / PVector.dist(points[i], camPosVec);
+      float zoomedTextSize = textSize * 1000 / PVector.dist(points[i], camPosVec);
       textSize(zoomedTextSize);
       text(notes[i], x[i], y[i]);
     }
@@ -279,23 +302,30 @@ class Tetra{
   }
   
   public void setColor(int r, int g, int b){
-    this.setColor(color(r,g,b)); 
+    if(useToneColorMapping){
+      
+    }else{
+      this.setColor(color(r,g,b)); 
+    }
   }
   
   public void setVisible(boolean visible){
     this.visible = visible; 
   }
-  
-  public void makeRoot(){
-    root = true;
-    if(Tonnetz3D.removeOnNewRoot){
-      for(int i = 0; i < connectedFace.length; i++){
-        //connected[i] = false;
-      }
+ 
+  public void setRoot(boolean newRoot){
+    if(newRoot){
+      root = true;
+      setColor(color(127));
+    }else{
+      root = false;
     }
-
-    setColor(color(127));
   }
+  
+  public boolean isRoot(){
+    return root;  
+  }
+  
   public void setColor(color colorValue){
     this.tetraColor = color(red(colorValue),green(colorValue), blue(colorValue), colorAlpha);
     if(tetraShape != null){
@@ -434,6 +464,10 @@ class Tetra{
     return connectedVertex[vertex]; 
   }
   
+  public void setVertexConnected(int vertex, boolean connected){
+    connectedVertex[vertex] = connected;
+  }
+  
   public int[] getVertices(){
     return new int[]{a,b,c,d};  
   }
@@ -516,78 +550,92 @@ class Tetra{
     return copy;
   }
 }
+public class NoteText{
+  String note;
+  float size;
+  float x;
+  float y;
+  
+  public NoteText(String note, float size, float x, float y){
+    this.note = note;
+    this.size = size;
+    this.x = x;
+    this.y = y;
+  }
+}
+
 
 public class TetraElement{
-    private final Tetra tetra;
-    public TetraElement(Tetra tetra){
-      this.tetra = tetra;  
-    }
-    public Tetra getTetra() {
-        return tetra;
-    }
-    
-    public boolean alreadyConnected(){
-      switch(element){
-        case FACE: return tetra.getFaceConnected(((TetraFace)this).getFace());
-        case EDGE: return tetra.getEdgeConnected(((TetraEdge)this).getEdge());
-        case VERTEX: return tetra.getVertexConnected(((TetraVertex)this).getVertex());
-      }
-      return false;
-    }
+  private final Tetra tetra;
+  public TetraElement(Tetra tetra){
+    this.tetra = tetra;  
+  }
+  public Tetra getTetra() {
+      return tetra;
   }
   
-  public class TetraVertex extends TetraElement{
-    private final int vertex;
-    
-    public TetraVertex(Tetra tetra, int vertex){
-      super(tetra);
-      this.vertex = vertex;
+  public boolean alreadyConnected(){
+    switch(element){
+      case FACE: return tetra.getFaceConnected(((TetraFace)this).getFace());
+      case EDGE: return tetra.getEdgeConnected(((TetraEdge)this).getEdge());
+      case VERTEX: return tetra.getVertexConnected(((TetraVertex)this).getVertex());
     }
-    
-    public int getVertex() {
-        return vertex;
-    }
-    
-    public boolean alreadyConnected(){
-      return getTetra().getVertexConnected(vertex);
-    }
+    return false;
+  }
+}
+  
+public class TetraVertex extends TetraElement{
+  private final int vertex;
+  
+  public TetraVertex(Tetra tetra, int vertex){
+    super(tetra);
+    this.vertex = vertex;
   }
   
-  public class TetraEdge extends TetraElement{
-    private final Set<Integer> edge;
-    
-    public TetraEdge(Tetra tetra, int vertexA, int vertexB){
-      super(tetra);
-      this.edge = new HashSet<Integer>();
-      this.edge.add((Integer) vertexA);
-      this.edge.add((Integer) vertexB);
-    }
-    
-    public TetraEdge(Tetra tetra, Set<Integer> edge){
-      super(tetra);
-      this.edge = edge;
-    }
-
-    public Set<Integer> getEdge() {
-        return edge;
-    }
-    public boolean alreadyConnected(){
-      return getTetra().getEdgeConnected(edge);
-    }
+  public int getVertex() {
+      return vertex;
   }
   
-  public class TetraFace extends TetraElement{
-    private final int face;
-
-    public TetraFace(Tetra tetra, int face) {
-        super(tetra);
-        this.face = face;
-    }
-
-    public int getFace() {
-        return face;
-    }
-    public boolean alreadyConnected(){
-      return getTetra().getFaceConnected(face);
-    }
+  public boolean alreadyConnected(){
+    return getTetra().getVertexConnected(vertex);
   }
+}
+  
+public class TetraEdge extends TetraElement{
+  private final Set<Integer> edge;
+  
+  public TetraEdge(Tetra tetra, int vertexA, int vertexB){
+    super(tetra);
+    this.edge = new HashSet<Integer>();
+    this.edge.add((Integer) vertexA);
+    this.edge.add((Integer) vertexB);
+  }
+  
+  public TetraEdge(Tetra tetra, Set<Integer> edge){
+    super(tetra);
+    this.edge = edge;
+  }
+
+  public Set<Integer> getEdge() {
+      return edge;
+  }
+  public boolean alreadyConnected(){
+    return getTetra().getEdgeConnected(edge);
+  }
+}
+  
+public class TetraFace extends TetraElement{
+  private final int face;
+
+  public TetraFace(Tetra tetra, int face) {
+      super(tetra);
+      this.face = face;
+  }
+
+  public int getFace() {
+      return face;
+  }
+  public boolean alreadyConnected(){
+    return getTetra().getFaceConnected(face);
+  }
+}
