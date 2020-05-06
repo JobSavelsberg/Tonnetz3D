@@ -27,7 +27,7 @@ void setPlaceMode(PlaceMode mode){
   placeMode = mode;
 }
 
-public static Element element = Element.VERTEX;
+public static Element element = Element.FACE;
 public static PlaceMode placeMode;
 
 public static boolean edgeConnectStraight = true;
@@ -80,7 +80,6 @@ void setup() {
 
   createInitialTetra(22); // 22 = the "D" before "F#" in the sequence
 
-  
   lastTime = millis();
 }
 

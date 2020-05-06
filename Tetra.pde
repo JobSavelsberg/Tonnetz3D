@@ -46,7 +46,7 @@ class Tetra{
   private static final float strokeWeight = 3;
   private static final float textSize = 15;
   private static final float textOffset = 15;
-  private static final float colorAlpha = 169;
+  private static final float colorAlpha = 212;
   private final color strokeColor = color(200,200,200);
   private color tetraColor = color(127);
   private static final boolean useToneColorMapping = true;
@@ -301,14 +301,6 @@ class Tetra{
     this.notes = notes; 
   }
   
-  public void setColor(int r, int g, int b){
-    if(useToneColorMapping){
-      
-    }else{
-      this.setColor(color(r,g,b)); 
-    }
-  }
-  
   public void setVisible(boolean visible){
     this.visible = visible; 
   }
@@ -326,11 +318,24 @@ class Tetra{
     return root;  
   }
   
+  public void setColor(int r, int g, int b){
+    if(useToneColorMapping){
+      ToneColorMapping.Color mappedColor = ToneColorMapping.getColor(notes);
+      this.setColor(color(mappedColor.r, mappedColor.g, mappedColor.b));
+    }else{
+      this.setColor(color(r,g,b)); 
+    }
+  }
   public void setColor(color colorValue){
+    if(useToneColorMapping){
+      ToneColorMapping.Color mappedColor = ToneColorMapping.getColor(notes);
+      colorValue = color(mappedColor.r, mappedColor.g, mappedColor.b);
+    }
     this.tetraColor = color(red(colorValue),green(colorValue), blue(colorValue), colorAlpha);
     if(tetraShape != null){
        tetraShape.setFill(color(red(tetraColor),green(tetraColor), blue(tetraColor),colorAlpha)); 
     }
+    
   }
 
   /*
