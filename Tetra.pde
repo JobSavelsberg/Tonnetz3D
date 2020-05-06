@@ -39,8 +39,8 @@ class Tetra{
   private static final int midiDuration = 1000; // milliseconds
   private static final int midiVelocity = 70; // 0-127
   private static final int midiStrumDelay = 70;
-  private static final int midiMinOctave = 4;
-  private static final int midiMaxOctave = 6;
+  private static final int midiMinOctave = 2;
+  private static final int midiMaxOctave = 4;
   // Drawing
   private static final float strokeWeight = 3;
   private static final float textSize = 15;

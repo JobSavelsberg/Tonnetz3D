@@ -261,7 +261,6 @@ void keyPressed() {
     case ',': tetraStructureHistory.previous(); resetCamera(); break;
     case '.': tetraStructureHistory.next(); resetCamera(); break;
   }
-
 }
 
 void reset(){

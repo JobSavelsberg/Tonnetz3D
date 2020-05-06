@@ -5,7 +5,7 @@ public static class Chords{
   static final ArrayList<String> noteNames = new ArrayList<String>(Arrays.asList(
     "A","A#","Bb","B","C","C#","Db","D","D#","Eb","E","F","F#","Gb","G","G#","Ab"
   ));
-  static final int[] noteMidi = {1,2,2,3,4,5,5,6,7,7,8,9,10,10,11,12,12};
+  static final int[] noteMidi = {21,22,22,23,24,25,25,26,27,27,28,29,30,30,31,32,32};
   
   public static int[] minor(String note, int octave){
     int n = noteNameToMidi(note, octave);
