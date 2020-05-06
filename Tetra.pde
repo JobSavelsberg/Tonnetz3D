@@ -1,18 +1,18 @@
 /*
-*  A tetra is an object containing 4 notes, it can be connected to other tetras sharing one side
+*  A tetra is an object containing 4 notes, it can be connected to other tetras sharing one face
 *  
 *    b 
 *  /   \    d is behind
 * a --- c
 * 
-* define sides in clockwise direction and call by missing vertex
+* define faces in clockwise direction and call by missing vertex
 * 
-* cbd = side A 
-* dac = side B
-* bad = side C
-* cab = side D
+* cbd = face A 
+* dac = face B
+* bad = face C
+* cab = face D
 *
-* Always connects at side D
+* Always connects at face D
 */
 
 public static boolean midiRandomize = true;
@@ -61,7 +61,7 @@ class Tetra{
   
   public boolean[] showNote = {true, true, true, true}; 
 
-
+  public int nextNoteInSequence;
   public String[] notes = new String[4];
   public PVector[] points = new PVector[4];
   public PVector centroid;
@@ -72,13 +72,14 @@ class Tetra{
   private boolean root = false;  
   private boolean initial = false;
 
-  public Tetra(String aNote, String bNote, String cNote, String dNote) {
+  public Tetra(int nextNoteInSequence) {
     root = true;
     initial = true;
-    notes[a] = aNote;
-    notes[b] = bNote;
-    notes[c] = cNote;
-    notes[d] = dNote;
+    notes[a] = Tonnetz3D.getNoteInSequence(nextNoteInSequence - 4);
+    notes[b] = Tonnetz3D.getNoteInSequence(nextNoteInSequence - 3);
+    notes[c] = Tonnetz3D.getNoteInSequence(nextNoteInSequence - 2);
+    notes[d] = Tonnetz3D.getNoteInSequence(nextNoteInSequence - 1);
+    this.nextNoteInSequence = nextNoteInSequence;
     points[a] = new PVector(1, 0, -invsqrt2).mult(size);
     points[b] = new PVector(-1, 0, -invsqrt2).mult(size);
     points[c] = new PVector(0, -1, invsqrt2).mult(size);
@@ -87,36 +88,36 @@ class Tetra{
     centroid = getCentroid();
   }
   
-  public Tetra(Tetra root, int[] side, String addNote) {
-    if(root.connectedFace[sideArrayToVertex(side)]){
-      new Exception("Side is already connected").printStackTrace();
+  // Construct tetra on root's face
+  public Tetra(Tetra root, int[] face) {
+    if(root.connectedFace[faceArrayToVertex(face)]){
+      new Exception("Face is already connected").printStackTrace();
     }
-    notes[a] = root.notes[side[c]];
-    notes[b] = root.notes[side[b]];
-    notes[c] = root.notes[side[a]];
-    notes[d] = addNote;
-    connectToSide(root, side);
-
-    centroid = getCentroid();
-  }
-  
-  private void connectToSide(Tetra root, int[] side){
-    points[a] = root.points[side[c]];
-    points[b] = root.points[side[b]];
-    points[c] = root.points[side[a]];
-  
+    notes[a] = root.notes[face[c]];
+    notes[b] = root.notes[face[b]];
+    notes[c] = root.notes[face[a]];
+    notes[d] = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence);
+    this.nextNoteInSequence = root.nextNoteInSequence+1;
+    points[a] = root.points[face[c]];
+    points[b] = root.points[face[b]];
+    points[c] = root.points[face[a]];
     PVector faceMiddle = getFaceMiddle(d);
-    PVector invNormal = PVector.mult(getNormal(getSideD()), -1);
+    PVector invNormal = PVector.mult(getNormal(getFaceD()), -1);
     points[d] = PVector.add(faceMiddle, invNormal.normalize().mult(tetraWidth*size));
-    makeShape();
+    centroid = getCentroid();
     
+    makeShape();
+
     connectedFace[d] = true;
-    root.connectedFace[sideArrayToVertex(side)] = true;
+    root.connectedFace[faceArrayToVertex(face)] = true;
     
     pulse(color(255,255,255,0),500);
   }
   
+  
   /*   
+  *  Construct tetra on root's edge
+  * 
   *   D C is a single point aka E
   *           E                           C--E--D
   * LEFT     D C       RIGHT               \   /
@@ -125,7 +126,10 @@ class Tetra{
   *         / B \    B is under A          / B \
   *        D-----C                        D-----C
   */      
-  public Tetra(Tetra root, Set<Integer> edge, EdgeConnectType edgeConnectType, String addNoteA, String addNoteB){
+  public Tetra(Tetra root, Set<Integer> edge, EdgeConnectType edgeConnectType){
+    String noteA = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence + 1);
+    String noteB = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence + 2);
+    this.nextNoteInSequence = root.nextNoteInSequence + 3;
     points[a] = root.points[(int) edge.toArray()[0]];
     points[b] = root.points[(int) edge.toArray()[1]];
     notes[a] = root.notes[(int) edge.toArray()[0]];
@@ -141,20 +145,20 @@ class Tetra{
     if(edgeConnectType == EdgeConnectType.EDGERIGHT){
       lastVertex = PVector.add(getFaceMiddle(points[a], points[b], E), N.mult(-tetraWidth*size));
       points[c] = E;
-      notes[c] = addNoteA;
+      notes[c] = noteA;
       points[d] = lastVertex;
-      notes[d] = addNoteB;
+      notes[d] = noteB;
     }else if(edgeConnectType == EdgeConnectType.EDGELEFT){
       lastVertex = PVector.add(getFaceMiddle(points[a], points[b], E), N.mult(tetraWidth*size));
       points[c] = lastVertex;
-      notes[c] = addNoteB; //<>//
+      notes[c] = noteB; //<>//
       points[d] = E;
-      notes[d] = addNoteA;
+      notes[d] = noteA;
     }else if(edgeConnectType == EdgeConnectType.EDGESTRAIGHT){
       points[c] = PVector.add(E,PVector.mult(N, size)); 
-      notes[c] = addNoteA;
+      notes[c] = noteA;
       points[d] = PVector.add(E,PVector.mult(N, -size)); 
-      notes[d] = addNoteB;
+      notes[d] = noteB;
     }
     
     centroid = getCentroid();
@@ -166,6 +170,14 @@ class Tetra{
     
     pulse(color(255,255,255,0),500);
   }
+  
+  /*
+  *  Construct tetra on root's vertex
+  */
+  public Tetra(Tetra root, int vertex){
+    
+  }
+
   
   // Called for every created tetra
   public void makeShape(){
@@ -221,7 +233,7 @@ class Tetra{
     float[] x = new float[4];
     float[] y = new float[4];
     for(int i = 0; i < notes.length; i++){
-      if(root || i == d || (mode == Mode.EDGE)){
+      if(root || i == d || (element == Element.EDGE)){
         PVector oD = PVector.sub(points[i], centroid).normalize(); // Offset Direction
         x[i] = screenX(points[i].x+oD.x*textOffset, points[i].y+oD.y*textOffset, points[i].z+oD.z*textOffset);
         y[i] = screenY(points[i].x+oD.x*textOffset, points[i].y+oD.y*textOffset, points[i].z+oD.z*textOffset);
@@ -231,7 +243,7 @@ class Tetra{
     PVector camPosVec = new PVector(camPosition[0],camPosition[1],camPosition[2]);
     cam.beginHUD();
     for(int i = 0; i < notes.length; i++){
-      if(mode == Mode.FACE){
+      if(element == Element.FACE){
         if(Tonnetz3D.removeOnNewRoot){
           if(!root && i!=d) {continue;}
         }else{
@@ -296,42 +308,42 @@ class Tetra{
   *  /   \       d is behind
   * a --- c
   * 
-  * define sides in clockwise direction
+  * define faces in clockwise direction
   * 
-  * cbd = side A 
-  * dac = side B
-  * bad = side C
-  * cab = side D
+  * cbd = face A 
+  * dac = face B
+  * bad = face C
+  * cab = face D
   */
-  public PVector[] getSideAPoints(){ return new PVector[]{points[c], points[b], points[d]}; }
-  public PVector[] getSideBPoints(){ return new PVector[]{points[d], points[a], points[c]}; }
-  public PVector[] getSideCPoints(){ return new PVector[]{points[b], points[a], points[d]}; }
-  public PVector[] getSideDPoints(){ return new PVector[]{points[c], points[a], points[b]}; }
-  public int[] getSideA(){ return new int[]{c,b,d}; }
-  public int[] getSideB(){ return new int[]{d,a,c}; }
-  public int[] getSideC(){ return new int[]{b,a,d}; }
-  public int[] getSideD(){ return new int[]{c,a,b}; }
+  public PVector[] getFaceAPoints(){ return new PVector[]{points[c], points[b], points[d]}; }
+  public PVector[] getFaceBPoints(){ return new PVector[]{points[d], points[a], points[c]}; }
+  public PVector[] getFaceCPoints(){ return new PVector[]{points[b], points[a], points[d]}; }
+  public PVector[] getFaceDPoints(){ return new PVector[]{points[c], points[a], points[b]}; }
+  public int[] getFaceA(){ return new int[]{c,b,d}; }
+  public int[] getFaceB(){ return new int[]{d,a,c}; }
+  public int[] getFaceC(){ return new int[]{b,a,d}; }
+  public int[] getFaceD(){ return new int[]{c,a,b}; }
   public PVector getPointA() { return points[a]; }
   public PVector getPointB() { return points[b]; }
   public PVector getPointC() { return points[c]; }
   public PVector getPointD() { return points[d]; }
   
-  public boolean isInside(PVector point){
+  public boolean isInface(PVector point){
     for(int s = 0; s < 4; s++){
-      if(!isSameSide(vertexToSideArray(s), point)){ return false;}
+      if(!isSameFace(vertexToFaceArray(s), point)){ return false;}
     } 
     return true;
   }
   
-  public boolean isSameSide(int[] side, PVector point){
-     PVector invNormal = PVector.mult(getNormal(side),-1);
-     float dotOpp = PVector.dot(invNormal, PVector.sub(points[sideArrayToVertex(side)], points[side[a]]));
-     float dotPoint = PVector.dot(invNormal, PVector.sub(point, points[side[a]]));
+  public boolean isSameFace(int[] face, PVector point){
+     PVector invNormal = PVector.mult(getNormal(face),-1);
+     float dotOpp = PVector.dot(invNormal, PVector.sub(points[faceArrayToVertex(face)], points[face[a]]));
+     float dotPoint = PVector.dot(invNormal, PVector.sub(point, points[face[a]]));
      return sign(dotOpp) == sign(dotPoint);
   }
   
-  public PVector getNormal(int[] side){
-    return getNormal(points[side[a]],points[side[b]],points[side[c]]);
+  public PVector getNormal(int[] face){
+    return getNormal(points[face[a]],points[face[b]],points[face[c]]);
   }
   public PVector getNormal(PVector a, PVector b, PVector c){
     return PVector.sub(b,c).cross(PVector.sub(a,c)).normalize();
@@ -340,8 +352,8 @@ class Tetra{
   public PVector getCentroid(){
       return PVector.add(PVector.add(points[a],points[b]), PVector.add(points[c],points[d])).div(4);
   }
-  public PVector getFaceMiddle(int side){
-     return getFaceMiddle(points[getSide(side)[a]], points[getSide(side)[b]], points[getSide(side)[c]]);
+  public PVector getFaceMiddle(int face){
+     return getFaceMiddle(points[getFace(face)[a]], points[getFace(face)[b]], points[getFace(face)[c]]);
   }
   public PVector getFaceMiddle(PVector a, PVector b, PVector c){
      return PVector.add(PVector.add(a,b), c).div(3); 
@@ -373,33 +385,41 @@ class Tetra{
     return edgeList;    
   }
   
-  public int[] getSide(int side){ return vertexToSideArray(side); }
-  public int[] vertexToSideArray(int side){
-    switch(side){
-      case a: return getSideA();
-      case b: return getSideB();
-      case c: return getSideC();
-      case d: return getSideD();
+  public int[] getFaces(){
+    return new int[]{a,b,c,d};  
+  }
+  
+  public int[] getFace(int face){ return vertexToFaceArray(face); }
+  public int[] vertexToFaceArray(int face){
+    switch(face){
+      case a: return getFaceA();
+      case b: return getFaceB();
+      case c: return getFaceC();
+      case d: return getFaceD();
     }
     return null;
   }
   
-  public PVector[] getSidePoints(int side){
-    switch(side){
-      case a: return getSideAPoints();
-      case b: return getSideBPoints();
-      case c: return getSideCPoints();
-      case d: return getSideDPoints();
+  public PVector[] getFacePoints(int face){
+    switch(face){
+      case a: return getFaceAPoints();
+      case b: return getFaceBPoints();
+      case c: return getFaceCPoints();
+      case d: return getFaceDPoints();
     }
     return null;
   }
   
-  public int sideArrayToVertex(int[] side){
+  public int faceArrayToVertex(int[] face){
     int sum = 0;
-    for(int i : side){
+    for(int i : face){
       sum += i; 
     }
     return 6 - sum;
+  }
+    
+  public boolean getFaceConnected(int face){
+    return connectedFace[face];
   }
   
   public boolean getEdgeConnected(Set<Integer> edge){
@@ -410,6 +430,13 @@ class Tetra{
     connectedEdge[edgeToEdgeIndex(edge)] = connected; 
   }
   
+  public boolean getVertexConnected(int vertex){
+    return connectedVertex[vertex]; 
+  }
+  
+  public int[] getVertices(){
+    return new int[]{a,b,c,d};  
+  }
   public Set<Integer> verticesToEdge(int a, int b){
     Set<Integer> edge = new HashSet<Integer>();
     edge.add(a);
@@ -443,7 +470,7 @@ class Tetra{
   *                      bd -> ac
   */ 
   //NOT NECESSARY
-  //public int[] getOppositesInOrder(Set<Integer> side){}
+  //public int[] getOppositesInOrder(Set<Integer> face){}
   
   private float sign(float x){
     if(x > 0) return 1;
@@ -454,7 +481,7 @@ class Tetra{
   /*
   *  For cloning
   */ 
-  public Tetra(PVector[] points, String[] notes, boolean[] showNote, boolean[] connectedFace, boolean[] connectedEdge, boolean[] connectedVertex, color tetraColor, int pulseTime, int pulse, color pulseColor, boolean visible, boolean root, boolean initial){
+  public Tetra(PVector[] points, String[] notes, boolean[] showNote, boolean[] connectedFace, boolean[] connectedEdge, boolean[] connectedVertex, color tetraColor, int pulseTime, int pulse, color pulseColor, boolean visible, boolean root, boolean initial, int nextNoteInSequence){
     this.points = points;
     this.notes = notes;
     this.showNote = showNote;
@@ -468,6 +495,7 @@ class Tetra{
     this.visible = visible;
     this.root = root;
     this.initial = initial;
+    this.nextNoteInSequence = nextNoteInSequence;
     centroid = getCentroid();
     makeShape();
     setColor(tetraColor);
@@ -484,8 +512,82 @@ class Tetra{
     color tetraColorCopy = color(red(this.tetraColor), green(this.tetraColor), blue(this.tetraColor), alpha(this.tetraColor));
     color pulseColorCopy = color(red(this.pulseColor), green(this.pulseColor), blue(this.pulseColor), alpha(this.pulseColor));
 
-    Tetra copy = new Tetra(pointsCopy, notesCopy, showNote.clone(), connectedFace.clone(), connectedEdge.clone(), connectedVertex.clone(), tetraColorCopy, this.pulseTime, this.pulse, pulseColorCopy, this.visible, this.root, this.initial);
+    Tetra copy = new Tetra(pointsCopy, notesCopy, showNote.clone(), connectedFace.clone(), connectedEdge.clone(), connectedVertex.clone(), tetraColorCopy, this.pulseTime, this.pulse, pulseColorCopy, this.visible, this.root, this.initial, this.nextNoteInSequence);
     return copy;
   }
- 
 }
+
+public class TetraElement{
+    private final Tetra tetra;
+    public TetraElement(Tetra tetra){
+      this.tetra = tetra;  
+    }
+    public Tetra getTetra() {
+        return tetra;
+    }
+    
+    public boolean alreadyConnected(){
+      switch(element){
+        case FACE: return tetra.getFaceConnected(((TetraFace)this).getFace());
+        case EDGE: return tetra.getEdgeConnected(((TetraEdge)this).getEdge());
+        case VERTEX: return tetra.getVertexConnected(((TetraVertex)this).getVertex());
+      }
+      return false;
+    }
+  }
+  
+  public class TetraVertex extends TetraElement{
+    private final int vertex;
+    
+    public TetraVertex(Tetra tetra, int vertex){
+      super(tetra);
+      this.vertex = vertex;
+    }
+    
+    public int getVertex() {
+        return vertex;
+    }
+    
+    public boolean alreadyConnected(){
+      return getTetra().getVertexConnected(vertex);
+    }
+  }
+  
+  public class TetraEdge extends TetraElement{
+    private final Set<Integer> edge;
+    
+    public TetraEdge(Tetra tetra, int vertexA, int vertexB){
+      super(tetra);
+      this.edge = new HashSet<Integer>();
+      this.edge.add((Integer) vertexA);
+      this.edge.add((Integer) vertexB);
+    }
+    
+    public TetraEdge(Tetra tetra, Set<Integer> edge){
+      super(tetra);
+      this.edge = edge;
+    }
+
+    public Set<Integer> getEdge() {
+        return edge;
+    }
+    public boolean alreadyConnected(){
+      return getTetra().getEdgeConnected(edge);
+    }
+  }
+  
+  public class TetraFace extends TetraElement{
+    private final int face;
+
+    public TetraFace(Tetra tetra, int face) {
+        super(tetra);
+        this.face = face;
+    }
+
+    public int getFace() {
+        return face;
+    }
+    public boolean alreadyConnected(){
+      return getTetra().getFaceConnected(face);
+    }
+  }

@@ -5,7 +5,6 @@ class TetraStructureHistory{
   
   public TetraStructureHistory(ArrayList<Tetra> tetraStructure){
     this.currentTetraStructure = tetraStructure;
-    this.push();
     currentState = 0;
   }
   
@@ -44,7 +43,7 @@ class TetraStructureHistory{
   
   void revertToState(int state){
     if(state < 0 || state > newestState()){
-        println("Invalid state to revert to");
+        return;
     }
     while(newestState() > state){
       tetraStructureHistory.remove(newestState());

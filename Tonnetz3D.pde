@@ -7,16 +7,27 @@ public static final float farClip = 1000;
 public static final float distance = 300;
 public static float aspect;
 
-public enum Mode {
-  FACE,
-  EDGE,
-  VERTEX,
+public enum Element {
+  FACE, EDGE, VERTEX,
 }
-public static Mode mode = Mode.EDGE;
 // removeOnNewRoot: whether the old tetras should be removed or not when a new root is created
-public static boolean removeOnNewRoot = true; 
-// placeOnSide: whether only a single tetra should be connected to a single side of another tetra when clicked
-public static boolean placeOnSide = false; 
+public static boolean removeOnNewRoot; 
+// placeSingle: whether only a single tetra should be connected to a single face of another tetra when clicked
+public static boolean placeSingle; 
+// The placemode is a set of combinations of the above booleans, giving a better interface for mode checks
+public enum PlaceMode {
+  BUILD, EXPLORE,
+}
+void setPlaceMode(PlaceMode mode){
+  switch(mode){
+    case BUILD: removeOnNewRoot = false; placeSingle = true; break;
+    case EXPLORE: removeOnNewRoot = true; placeSingle = false; break;
+  }
+  placeMode = mode;
+}
+
+public static Element element = Element.FACE;
+public static PlaceMode placeMode;
 
 public static boolean edgeConnectStraight = true;
 
@@ -57,27 +68,24 @@ void setup() {
   picker = new RayPicker(cam);
 
   midi = new Midi(1); // channel 0
+  
+  setPlaceMode(PlaceMode.EXPLORE);
+  tetraStructureHistory = new TetraStructureHistory(tetraStructure);
 
-  createInitialTetra(22); // 22 = "D" before "F#"
+  createInitialTetra(22); // 22 = the "D" before "F#" in the sequence
 
   
   lastTime = millis();
-  tetraStructureHistory = new TetraStructureHistory(tetraStructure);
 }
 
 /*
-* Creates the initial tetra, the input is the note index added to all of the side tetras
+* Creates the initial tetra, the input is the note index added to all of the face tetras
 * So the notes of the root tetra will be the 4 preceding notes
 */
-void createInitialTetra(int next) {  
-  currentNote = next;
-  Tetra root = new Tetra(getSequence(next-4),getSequence(next-3),getSequence(next-2),getSequence(next-1));
+void createInitialTetra(int nextNoteInSequence) {  
+  Tetra root = new Tetra(nextNoteInSequence);
   tetraStructure.add(root);
-  if(mode == Mode.FACE){
-     makeNewRoot(root, getSequence(next));
-  }else if(mode == Mode.EDGE){
-     placeEdgeTetras(root);  
-  }
+  makeNewRoot(root);
 }
 
 int lastTime = 0;
@@ -110,27 +118,19 @@ void draw() {
 }
 
 
-RayPicker.TetraElement picked = null;
+TetraElement picked = null;
 void mousePressed(){ 
-  picked = picker.pick(mouseX,mouseY, tetraStructure, mode);
+  picked = picker.pick(mouseX,mouseY, tetraStructure, element);
   if(picked != null && picked.getTetra() != null){
     if(mouseButton==LEFT){
       picked.getTetra().play(midi);
     }else if(mouseButton==RIGHT){
       cam.setActive(false);
-      if(mode == Mode.FACE){
-        if(!removeOnNewRoot && placeOnSide){
-          placeOnSide(picked.getTetra(), ((RayPicker.TetraSide) picked).getSide(), nextNote());
-        }else if(picked.getTetra().connectedFace[((RayPicker.TetraSide) picked).getSide()] == false){
-            makeNewRoot(picked.getTetra(), nextNote()); 
+      if(!picked.alreadyConnected()){
+        switch(placeMode){
+          case EXPLORE: makeNewRoot(picked.getTetra()); break;
+          case BUILD: placeNewTetra(picked); break;
         }
-        tetraStructureHistory.push();
-      }
-      if(mode == Mode.EDGE){
-        placeEdgeTetras((RayPicker.TetraEdge) picked);
-      }
-      if(mode == Mode.VERTEX){
-        //placeOnVertex();
       }
     }
   }
@@ -143,11 +143,7 @@ void mouseReleased(){
   }
 }
 
-/*
-*  Sets a tetra to be the new root and connects 4 tetras with a given nextNote to each side of the root
-*  When removeOnNewRoot is set we delete all other tetras first
-*/
-void makeNewRoot(Tetra root, String nextNote){
+void makeNewRoot(Tetra root){
   PVector centroid = root.centroid;
   cam.lookAt(centroid.x, centroid.y, centroid.z);
   root.makeRoot();
@@ -156,66 +152,75 @@ void makeNewRoot(Tetra root, String nextNote){
     removeAllButRoot(root);
   }else{
     // Swap previous root at index 0 with new root
-    Tetra previousRoot = tetraStructure.get(0);
-    tetraStructure.set(0, root);
-    tetraStructure.add(previousRoot);
-  }
-  
-  // Connect all four tetras to the side of the root
-  for(int i = 0; i < 4; i++){
-    if(!root.connectedFace[i]){
-      Tetra t  = new Tetra(root, root.getSide(i), nextNote);
-      t.setColor(nextColor());
-      tetraStructure.add(t);
+    if(tetraStructure.size() > 1){
+      Tetra previousRoot = tetraStructure.get(0);
+      tetraStructure.set(0, root);
+      tetraStructure.add(previousRoot);
     }
   }
+  
+  if(element == Element.FACE){
+    for(int face : root.getFaces()){
+      placeOnFace(root, face);
+    }
+  }else if(element == Element.EDGE){
+    for(Set<Integer> edge : root.getEdges()){
+      placeOnEdge(root, edge);
+    }
+  }else if(element == Element.VERTEX){
+    for(int vertex : root.getVertices()){
+      placeOnVertex(root, vertex);
+    }
+  } 
+  tetraStructureHistory.push();
 }
 
-void placeEdgeTetras(RayPicker.TetraEdge tetraEdge){
-  if(placeOnSide){
-      String addNoteA = nextNote();
-      String addNoteB = nextNote();
-      color c = nextColor();
-      if(edgeConnectStraight){
-        Tetra straightTetra = new Tetra(tetraEdge.getTetra(), tetraEdge.getEdge(), EdgeConnectType.EDGESTRAIGHT, addNoteA, addNoteB);
-        straightTetra.setColor(c);
-        tetraStructure.add(straightTetra);
-      }else{
-        Tetra leftTetra = new Tetra(tetraEdge.getTetra(), tetraEdge.getEdge(), EdgeConnectType.EDGELEFT, addNoteA, addNoteB);
-        leftTetra.setColor(c);
-        Tetra rightTetra = new Tetra(tetraEdge.getTetra(), tetraEdge.getEdge(), EdgeConnectType.EDGERIGHT, addNoteA, addNoteB);
-        rightTetra.setColor(c);
-        tetraStructure.add(leftTetra);
-        tetraStructure.add(rightTetra);
-      }
-  }else{
-    placeEdgeTetras(tetraEdge.getTetra());
+void placeNewTetra(TetraElement picked){
+  switch(element){
+    case FACE: placeOnFace((TetraFace) picked); break;
+    case EDGE: placeOnEdge((TetraEdge) picked); break;
+    case VERTEX: placeOnVertex((TetraVertex) picked); break;
   }
   tetraStructureHistory.push();
 }
 
-void placeEdgeTetras(Tetra root){
-  lookAt(root);
-  root.makeRoot();
-  if(removeOnNewRoot) removeAllButRoot(root);
-  String addNoteA = nextNote();
-  String addNoteB = nextNote();
-  for(Set<Integer> edge : root.getEdges()){
-      color c = nextColor();
-      if(edgeConnectStraight){
-        Tetra straightTetra = new Tetra(root, edge, EdgeConnectType.EDGESTRAIGHT, addNoteA, addNoteB);
-        straightTetra.setColor(c);
-        tetraStructure.add(straightTetra);
-      }else{
-        Tetra leftTetra = new Tetra(root, edge, EdgeConnectType.EDGELEFT, addNoteA, addNoteB);
-        leftTetra.setColor(c);
-        Tetra rightTetra = new Tetra(root, edge, EdgeConnectType.EDGERIGHT, addNoteA, addNoteB);
-        rightTetra.setColor(c);
-        tetraStructure.add(leftTetra);
-        tetraStructure.add(rightTetra);
-      }
+void placeOnFace(TetraFace tetraFace){ placeOnFace(tetraFace.getTetra(), tetraFace.getFace()); }
+void placeOnFace(Tetra root, int face){
+  color c = nextColor();
+  if(!root.getFaceConnected(face)){
+    Tetra t = new Tetra(root, root.getFace(face));
+    t.setColor(c);
+    tetraStructure.add(t);
   }
 }
+
+void placeOnEdge(TetraEdge tetraEdge){ placeOnEdge(tetraEdge.getTetra(), tetraEdge.getEdge()); }
+void placeOnEdge(Tetra root, Set<Integer> edge){
+  color c = nextColor();
+  if(!root.getEdgeConnected(edge)){
+    if(edgeConnectStraight){
+      Tetra straightTetra = new Tetra(root, edge, EdgeConnectType.EDGESTRAIGHT);
+      straightTetra.setColor(c);
+      tetraStructure.add(straightTetra);
+    }else{
+      Tetra leftTetra = new Tetra(root, edge, EdgeConnectType.EDGELEFT);
+      leftTetra.setColor(c);
+      Tetra rightTetra = new Tetra(root, edge, EdgeConnectType.EDGERIGHT);
+      rightTetra.setColor(c);
+      tetraStructure.add(leftTetra);
+      tetraStructure.add(rightTetra);
+    }
+  }
+}
+
+void placeOnVertex(TetraVertex tetraVertex){ placeOnVertex(tetraVertex.getTetra(), tetraVertex.getVertex()); }
+void placeOnVertex(Tetra root, int vertex){
+  color c = nextColor();
+  if(!root.getVertexConnected(vertex)){
+    //TODO
+  }
+}
+
 
 void removeAllButRoot(Tetra root){
  for(int i = tetraStructure.size()-1; i >= 0 ; i--){
@@ -223,25 +228,6 @@ void removeAllButRoot(Tetra root){
       tetraStructure.remove(i);
     }
   }  
-}
-
-
-/*
-*  When placeOnSide = true, we can place a single tetra on one side of the root, instead of creating all adjacent tetras.
-* only used when removeOnNewRoot is false
-*/
-void placeOnSide(Tetra root, int side, String nextNote){
-  if(!root.connectedFace[side]){
-    PVector centroid = root.centroid;
-    cam.lookAt(centroid.x, centroid.y, centroid.z);
-    
-    Tetra t = new Tetra(root, root.getSide(side), nextNote);
-    t.setColor(nextColor());
-    tetraStructure.add(t);
-  }else{
-    println("Can't connect to this side");  
-  }
-
 }
 
 void keyPressed() {
@@ -253,10 +239,10 @@ void keyPressed() {
     case 'f': tetraStructure.get(4).play(midi); break;
     case 'r': reset(); break;
     case 't': setRemoveOnNewRoot(!removeOnNewRoot); break;
-    case 'y': setPlaceOnSide(!placeOnSide); break;
-    case 'u': changeMode(Mode.FACE); break;
-    case 'i': changeMode(Mode.EDGE);break;
-    case 'o': changeMode(Mode.VERTEX); break;
+    case 'y': setPlaceSingle(!placeSingle); break;
+    case 'u': changeElement(Element.FACE); break;
+    case 'i': changeElement(Element.EDGE);break;
+    case 'o': changeElement(Element.VERTEX); break;
     case 'm': midiRandomize = !midiRandomize; break;
     case ',': tetraStructureHistory.previous(); resetCamera(); break;
     case '.': tetraStructureHistory.next(); resetCamera(); break;
@@ -273,7 +259,9 @@ void reset(){
 }
 
 void resetCamera(){
-  lookAt(tetraStructure.get(0));
+  if(tetraStructure.size() > 0){
+    lookAt(tetraStructure.get(0));
+  }
 }
 
 void lookAt(Tetra tetra){
@@ -281,9 +269,9 @@ void lookAt(Tetra tetra){
   cam.lookAt(centroid.x, centroid.y, centroid.z);  
 }
 
-void changeMode(Mode newMode){
-  mode = newMode;
-  println("Mode set to: " + mode);
+void changeElement(Element newElement){
+  element = newElement;
+  println("Element set to: " + element);
 }
 
 void setRemoveOnNewRoot(boolean newRemoveOnNewRoot){
@@ -292,9 +280,9 @@ void setRemoveOnNewRoot(boolean newRemoveOnNewRoot){
   println("removeOnNewRoot: "+removeOnNewRoot);
 }
 
-void setPlaceOnSide(boolean newPlaceOnSide){
-  placeOnSide = newPlaceOnSide; 
-  println("placeOnSide: "+placeOnSide);
+void setPlaceSingle(boolean newPlaceSingle){
+  placeSingle = newPlaceSingle; 
+  println("placeOnFace: "+placeSingle);
 }
 
 /*
@@ -304,7 +292,7 @@ int currentNote = -1;
 public String nextNote(){ return nextNote(1); }
 public String nextNote(int i){
   currentNote += i;
-  return getSequence(currentNote);
+  return getNoteInSequence(currentNote);
 }
 
 int currentColor = -1;
@@ -314,7 +302,7 @@ public color nextColor(int i){
   return colors[currentColor%colors.length];
 }
 
-public String getSequence(int i){
+public static String getNoteInSequence(int i){
   return seq[i%seq.length];
 }
 

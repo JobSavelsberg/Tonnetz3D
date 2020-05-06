@@ -8,7 +8,7 @@ class RayPicker{
     this.cam = cam;
   }
   
-  public TetraElement pick(float x, float y,  ArrayList<Tetra> tetras, Tonnetz3D.Mode mode){
+  public TetraElement pick(float x, float y,  ArrayList<Tetra> tetras, Tonnetz3D.Element element){
     // --- get camera target position
     float a[] = cam.getLookAt().clone();
     PVector camTarget = new PVector(a[0], a[1], a[2]);
@@ -42,7 +42,7 @@ class RayPicker{
     
     TetraIntersect tetraIntersect = tetraIntersect(ray, camPosition, tetras);  
     if(tetraIntersect != null){
-      switch(mode){
+      switch(element){
         case FACE: return pickFace(tetraIntersect);
         case EDGE: return pickEdge(tetraIntersect);
         case VERTEX: return pickVertex(tetraIntersect);
@@ -56,37 +56,37 @@ class RayPicker{
   // Ax+By+Cz+D=0
   public TetraIntersect tetraIntersect(PVector ray, PVector camPos, ArrayList<Tetra> tetras){
     PVector closestP = PVector.add(camPos, PVector.mult(ray, farClip));
-    TetraSide closestTetraSide = null;
+    TetraFace closestTetraFace = null;
 
     for(Tetra tetra: tetras){
       for(int i = 0; i < 4; i++){       
-        int[] side = tetra.getSide(i);
-        PVector N = tetra.getNormal(side);       
+        int[] face = tetra.getFace(i);
+        PVector N = tetra.getNormal(face);       
         
         if(PVector.dot(N, ray) == 0){
           continue;
         }
-        float t = PVector.dot(N, PVector.sub(tetra.points[side[0]],camPos)) / PVector.dot(N, ray);
+        float t = PVector.dot(N, PVector.sub(tetra.points[face[0]],camPos)) / PVector.dot(N, ray);
         if(t<0){
            continue; 
         }
         PVector P = PVector.add(camPos,PVector.mult(ray,t));
-        boolean intersects = triangleIntersects(tetra.getSidePoints(i), N, P);
+        boolean intersects = triangleIntersects(tetra.getFacePoints(i), N, P);
         
         if(intersects && PVector.dist(camPos, P) < PVector.dist(camPos, closestP)){
           closestP = P;
-          closestTetraSide = new TetraSide(tetra, i);
+          closestTetraFace = new TetraFace(tetra, i);
         }
       }
     }
-    if(closestTetraSide != null){
-      return new TetraIntersect(closestTetraSide, closestP);
+    if(closestTetraFace != null){
+      return new TetraIntersect(closestTetraFace, closestP);
     }
     return null;
   }
   
   public boolean triangleIntersects(PVector[] points, PVector N, PVector P){
-    // Is P inside or outside
+    // Is P inface or outface
     PVector edge0 = PVector.sub(points[1], points[0]);
     PVector edge1 = PVector.sub(points[2], points[1]);
     PVector edge2 = PVector.sub(points[0], points[2]);
@@ -95,21 +95,21 @@ class RayPicker{
     PVector C2 = PVector.sub(P, points[2]);
     
     if (PVector.dot(N, edge0.cross(C0)) < 0 && PVector.dot(N, edge1.cross(C1)) < 0 && PVector.dot(N, edge2.cross(C2)) < 0) {
-          return true; // P is inside the triangle 
+          return true; // P is inface the triangle 
     }
     return false;
   }
   
   private TetraVertex pickVertex(TetraIntersect tetraIntersect){
     Tetra tetra = tetraIntersect.getTetra();
-    int[] side = tetra.getSide(tetraIntersect.getSide());
-    PVector[] points = tetra.getSidePoints(tetraIntersect.getSide());
+    int[] face = tetra.getFace(tetraIntersect.getFace());
+    PVector[] points = tetra.getFacePoints(tetraIntersect.getFace());
     int smallestVertex = 0;
     float smallestDistance = MAX_FLOAT;
     for(int i = 0; i < 3; i++){
       float dist = PVector.dist(tetraIntersect.getIntersectionPoint(),points[i]);
       if(dist < smallestDistance){
-        smallestVertex = side[i];
+        smallestVertex = face[i];
         smallestDistance = dist;
       }
     }
@@ -121,27 +121,27 @@ class RayPicker{
     Set<Integer> edge = new HashSet<Integer>();
     
     Tetra tetra = tetraIntersect.getTetra();
-    int[] side = tetra.getSide(tetraIntersect.getSide());
-    PVector[] points = tetra.getSidePoints(tetraIntersect.getSide());
+    int[] face = tetra.getFace(tetraIntersect.getFace());
+    PVector[] points = tetra.getFacePoints(tetraIntersect.getFace());
     
-    int biggestSideIndex = 0;
+    int biggestFaceIndex = 0;
     float biggestDistance = 0;
     for(int i = 0; i < 3; i++){
       float dist = PVector.dist(tetraIntersect.getIntersectionPoint(),points[i]);
       if(dist > biggestDistance){
-        biggestSideIndex = i;
+        biggestFaceIndex = i;
         biggestDistance = dist;
       }
     }
     for(int i = 0; i < 3; i++){
-      if(i!=biggestSideIndex){
-        edge.add(side[i]);  
+      if(i!=biggestFaceIndex){
+        edge.add(face[i]);  
       }
     }
     return new TetraEdge(tetraIntersect.getTetra(), edge);
   }
   
-  private TetraSide pickFace(TetraIntersect tetraIntersect){    
+  private TetraFace pickFace(TetraIntersect tetraIntersect){    
     return tetraIntersect;
   }
  
@@ -162,73 +162,16 @@ class RayPicker{
       return up.normalize();
   }
   
-  
-  public class TetraElement{
-    private final Tetra tetra;
-    public TetraElement(Tetra tetra){
-      this.tetra = tetra;  
-    }
-    public Tetra getTetra() {
-        return tetra;
-    }
-  }
-  
-  public class TetraVertex extends TetraElement{
-    private final int vertex;
-    
-    public TetraVertex(Tetra tetra, int vertex){
-      super(tetra);
-      this.vertex = vertex;
-    }
-    
-    public int getVertex() {
-        return vertex;
-    }
-  }
-  
-  public class TetraEdge extends TetraElement{
-    private final Set<Integer> edge;
-    
-    public TetraEdge(Tetra tetra, int vertexA, int vertexB){
-      super(tetra);
-      this.edge = new HashSet<Integer>();
-      this.edge.add((Integer) vertexA);
-      this.edge.add((Integer) vertexB);
-    }
-    
-    public TetraEdge(Tetra tetra, Set<Integer> edge){
-      super(tetra);
-      this.edge = edge;
-    }
-
-    public Set<Integer> getEdge() {
-        return edge;
-    }
-  }
-  
-  public class TetraSide extends TetraElement{
-    private final int side;
-
-    public TetraSide(Tetra tetra, int side) {
-        super(tetra);
-        this.side = side;
-    }
-
-    public int getSide() {
-        return side;
-    }
-  }
-  
-  class TetraIntersect extends TetraSide{
+  class TetraIntersect extends TetraFace{
     private final PVector intersectionPoint;
     
-    public TetraIntersect(Tetra tetra, int side, PVector intersectionPoint){
-      super(tetra,side);
+    public TetraIntersect(Tetra tetra, int face, PVector intersectionPoint){
+      super(tetra,face);
       this.intersectionPoint = intersectionPoint;
     }
     
-    public TetraIntersect(TetraSide tetraSide, PVector intersectionPoint){
-      super(tetraSide.getTetra(),tetraSide.getSide());
+    public TetraIntersect(TetraFace tetraFace, PVector intersectionPoint){
+      super(tetraFace.getTetra(),tetraFace.getFace());
       this.intersectionPoint = intersectionPoint;
     }
     
@@ -236,6 +179,7 @@ class RayPicker{
       return intersectionPoint;  
     }
   }
+  
   
 
 }
