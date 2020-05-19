@@ -35,7 +35,7 @@ class Tetra{
   private final float tetraWidth = 2*sqrt(6f)/3f;
   private final float faceHeight = 2*sqrt(0.75f);
   private final float midEdgeToOppositeMidEdge = sqrt(faceHeight*faceHeight - 1f);
-  private final float samePointError = 1f;
+  private final float samePointError = 0.01f;
   
   // Midi parameters
   private static final int midiDuration = 1000; // milliseconds
@@ -136,8 +136,8 @@ class Tetra{
   *        D-----C                        D-----C
   */      
   public Tetra(Tetra root, Set<Integer> edge, EdgeConnectType edgeConnectType){
-    String noteA = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence + 1);
-    String noteB = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence + 2);
+    String noteA = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence);
+    String noteB = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence + 1);
     this.nextNoteInSequence = root.nextNoteInSequence + 3;
     points[a] = root.points[(int) edge.toArray()[0]];
     points[b] = root.points[(int) edge.toArray()[1]];
@@ -315,6 +315,20 @@ class Tetra{
   public void setVisible(boolean visible){
     this.visible = visible; 
   }
+  
+  public void removeNotesShownBy(Tetra root){
+    if(root == this) return;
+    for(int i = 0; i < 4; i++){
+      if(showNote[i]){
+        int connectedVertexIndex = root.getVertex(points[i]);
+        if(connectedVertexIndex != -1){
+          if(root.showNote[connectedVertexIndex]){
+            showNote[i] = false;
+          }
+        }
+      }
+    }
+  }
  
   public void setRoot(boolean newRoot){
     if(newRoot){
@@ -360,11 +374,13 @@ class Tetra{
   
   public void remove(ArrayList<Tetra> tetraStructure){
     for(Tetra tetra : tetraStructure){
-      for(int i = 0; i < 4; i++){
-        if(showNote[i]){
-          int connectedVertexIndex = tetra.getVertex(points[i]);
-          if(connectedVertexIndex != -1){
-            tetra.showNote[connectedVertexIndex] = true; 
+      if(tetra != this){
+        for(int i = 0; i < 4; i++){
+          if(showNote[i]){
+            int connectedVertexIndex = tetra.getVertex(points[i]);
+            if(connectedVertexIndex != -1){
+              tetra.showNote[connectedVertexIndex] = true; 
+            }
           }
         }
       }

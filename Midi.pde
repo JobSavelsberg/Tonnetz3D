@@ -10,9 +10,14 @@ class Midi {
   boolean retrig = true;
   ArrayList<LongNote> playingNotes = new ArrayList<LongNote>();
 
-  public Midi(int channel) {
+  
+  public Midi(int channel){
+    this(channel, "Microsoft GS Wavetable Synth");  
+  }
+  public Midi(int channel, String midiDevice) {
     this.channel = channel;
-    midiBus = new MidiBus(this, -1, "Microsoft GS Wavetable Synth");
+    // "loopMIDI Port"
+    midiBus = new MidiBus(this, -1, midiDevice);
   }
 
   public void playNote(String note, int octave, int velocity, int duration, int delay) {

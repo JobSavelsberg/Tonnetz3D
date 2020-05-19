@@ -7,6 +7,8 @@ public static final float farClip = 5000;
 public static final float distance = 300;
 public static float aspect;
 
+public static String midiDevice = "Microsoft GS Wavetable Synth"; // "loopMIDI Port";
+
 public enum Element {
   FACE, EDGE, VERTEX,
 }
@@ -32,7 +34,7 @@ void setPlaceMode(PlaceMode mode){
   }else if(mode == PlaceMode.EXPLORE){
     switch(element){
       case VERTEX: removeOnNewRoot = true; keepPreviousRoot = false; placeSingle = false; break;
-      case EDGE: removeOnNewRoot = true; keepPreviousRoot = true; placeSingle = false; break;
+      case EDGE: removeOnNewRoot = true; keepPreviousRoot = false; placeSingle = false; break;
       case FACE: removeOnNewRoot = true; keepPreviousRoot = true; placeSingle = false; break;
     }
   }
@@ -92,9 +94,10 @@ void setup() {
   
   picker = new RayPicker(cam);
 
-  midi = new Midi(1); // channel 0
+
+  midi = new Midi(0, midiDevice); // channel 0
   
-  setPlaceMode(PlaceMode.EXPLORE);
+  setPlaceMode(PlaceMode.BUILD);
   tetraStructureHistory = new TetraStructureHistory(tetraStructure);
 
   createInitialTetra(22); // 22 = the "D" before "F#" in the sequence
@@ -179,12 +182,12 @@ void makeNewRoot(Tetra root){
   PVector centroid = root.centroid;
   cam.lookAt(centroid.x, centroid.y, centroid.z);
   root.setRoot(true);
-  
   if(removeOnNewRoot){
     removeAllButRoot(root);
     //Remove root status of previous root
     if(keepPreviousRoot){
-      tetraStructure.get(0).setRoot(false);    
+      tetraStructure.get(0).setRoot(false); 
+      tetraStructure.get(0).removeNotesShownBy(root);
     }else if(allowReverseTravel){
       root.freeConnections();  
     }
@@ -215,7 +218,19 @@ void makeNewRoot(Tetra root){
   tetraStructureHistory.push();
 }
 
+void removeAllButRoot(Tetra root){
+ for(int i = tetraStructure.size()-1; i >= 0 ; i--){
+    if(tetraStructure.get(i) == root) continue;
+    if(keepPreviousRoot && tetraStructure.get(i).isRoot()) continue;
+    Tetra tetra = tetraStructure.get(i);
+    tetra.remove(tetraStructure);
+    tetraStructure.remove(i);
+  }  
+}
+
 void placeNewTetra(TetraElement picked){
+  PVector centroid = picked.getTetra().centroid;
+  cam.lookAt(centroid.x, centroid.y, centroid.z);
   switch(element){
     case FACE: placeOnFace((TetraFace) picked); break;
     case EDGE: placeOnEdge((TetraEdge) picked); break;
@@ -279,15 +294,6 @@ void placeOnVertex(Tetra root, int vertex, boolean addLevel){
   }
 }
 
-void removeAllButRoot(Tetra root){
- for(int i = tetraStructure.size()-1; i >= 0 ; i--){
-    if(tetraStructure.get(i) == root) continue;
-    if(keepPreviousRoot && tetraStructure.get(i).isRoot()) continue;
-    Tetra tetra = tetraStructure.get(i);
-    tetra.remove(tetraStructure);
-    tetraStructure.remove(i);
-  }  
-}
 
 void keyPressed() {
   switch(key){
