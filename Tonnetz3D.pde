@@ -13,21 +13,39 @@ public enum Element {
 // removeOnNewRoot: whether the old tetras should be removed or not when a new root is created
 public static boolean removeOnNewRoot; 
 public static boolean keepPreviousRoot;
+public static boolean allowReverseTravel = false;
 // placeSingle: whether only a single tetra should be connected to a single face of another tetra when clicked
 public static boolean placeSingle; 
 // The placemode is a set of combinations of the above booleans, giving a better interface for mode checks
 public enum PlaceMode {
   BUILD, EXPLORE,
 }
+public static Element element = Element.FACE;
+
 void setPlaceMode(PlaceMode mode){
-  switch(mode){
-    case BUILD: removeOnNewRoot = false; keepPreviousRoot = false; placeSingle = true; break;
-    case EXPLORE: removeOnNewRoot = true; keepPreviousRoot = true; placeSingle = false; break;
+  if(mode == PlaceMode.BUILD){
+    switch(element){
+      case VERTEX: removeOnNewRoot = false; keepPreviousRoot = false; placeSingle = true; break;
+      case EDGE: removeOnNewRoot = false; keepPreviousRoot = false; placeSingle = true; break;
+      case FACE: removeOnNewRoot = false; keepPreviousRoot = false; placeSingle = true; break;
+    }
+  }else if(mode == PlaceMode.EXPLORE){
+    switch(element){
+      case VERTEX: removeOnNewRoot = true; keepPreviousRoot = false; placeSingle = false; break;
+      case EDGE: removeOnNewRoot = true; keepPreviousRoot = true; placeSingle = false; break;
+      case FACE: removeOnNewRoot = true; keepPreviousRoot = true; placeSingle = false; break;
+    }
   }
+
   placeMode = mode;
 }
 
-public static Element element = Element.FACE;
+void changeElement(Element newElement){
+  element = newElement;
+  setPlaceMode(placeMode);
+  println("Element set to: " + element);
+}
+
 public static PlaceMode placeMode;
 
 public static boolean edgeConnectStraight = true;
@@ -65,6 +83,7 @@ ArrayList<NoteText> noteTexts = new ArrayList<NoteText>();
 
 void setup() {
   size(1080, 720, P3D); 
+  textAlign(CENTER, CENTER);
 
   aspect = float(width)/float(height);  
   perspective(fov, aspect, nearClip, farClip);  
@@ -116,10 +135,14 @@ void draw() {
   background(255);
   for(Tetra tetra : tetraStructure){
     tetra.draw();
+    tetra.drawNotesPre(cam);
   }
+  cam.beginHUD();
   for(Tetra tetra : tetraStructure){
-    tetra.drawNotes(cam);
+    tetra.drawNotesHUD(cam);
   }
+  cam.endHUD();
+
   drawDebugSphere();  
 }
 
@@ -162,14 +185,19 @@ void makeNewRoot(Tetra root){
     //Remove root status of previous root
     if(keepPreviousRoot){
       tetraStructure.get(0).setRoot(false);    
+    }else if(allowReverseTravel){
+      root.freeConnections();  
     }
   }
-    // Swap previous root at index 0 with new root
-    if(tetraStructure.size() > 1){
-      Tetra previousRoot = tetraStructure.get(0);
-      tetraStructure.set(0, root);
-      tetraStructure.add(previousRoot);
+  // Swap previous root at index 0 with new root
+  if(tetraStructure.size() > 1){
+    Tetra previousRoot = tetraStructure.get(0);
+    if(tetraStructure.contains(root)){
+      tetraStructure.remove(root);  
     }
+    tetraStructure.set(0, root);
+    tetraStructure.add(previousRoot);
+  }
   
   if(element == Element.FACE){
     for(int face : root.getFaces()){
@@ -255,6 +283,8 @@ void removeAllButRoot(Tetra root){
  for(int i = tetraStructure.size()-1; i >= 0 ; i--){
     if(tetraStructure.get(i) == root) continue;
     if(keepPreviousRoot && tetraStructure.get(i).isRoot()) continue;
+    Tetra tetra = tetraStructure.get(i);
+    tetra.remove(tetraStructure);
     tetraStructure.remove(i);
   }  
 }
@@ -296,11 +326,6 @@ void resetCamera(){
 void lookAt(Tetra tetra){
   PVector centroid = tetra.getCentroid();
   cam.lookAt(centroid.x, centroid.y, centroid.z);  
-}
-
-void changeElement(Element newElement){
-  element = newElement;
-  println("Element set to: " + element);
 }
 
 void setRemoveOnNewRoot(boolean newRemoveOnNewRoot){

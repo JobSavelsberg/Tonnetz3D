@@ -35,6 +35,7 @@ class Tetra{
   private final float tetraWidth = 2*sqrt(6f)/3f;
   private final float faceHeight = 2*sqrt(0.75f);
   private final float midEdgeToOppositeMidEdge = sqrt(faceHeight*faceHeight - 1f);
+  private final float samePointError = 1f;
   
   // Midi parameters
   private static final int midiDuration = 1000; // milliseconds
@@ -61,7 +62,7 @@ class Tetra{
   public boolean[] connectedEdge = {false,false,false,false, false, false}; 
   public boolean[] connectedVertex = {false,false,false,false}; 
   
-  public boolean[] showNote = {true, true, true, true}; 
+  public boolean[] showNote = {false, false, false, false}; 
 
   public int nextNoteInSequence;
   public String[] notes = new String[4];
@@ -86,6 +87,11 @@ class Tetra{
     points[b] = new PVector(-1, 0, -invsqrt2).mult(size);
     points[c] = new PVector(0, -1, invsqrt2).mult(size);
     points[d] = new PVector(0, 1, invsqrt2).mult(size);
+    
+    showNote[a] = true;
+    showNote[b] = true;
+    showNote[c] = true;
+    showNote[d] = true;
     makeShape();
     centroid = getCentroid();
   }
@@ -107,6 +113,7 @@ class Tetra{
     PVector invNormal = PVector.mult(getNormal(getFaceD()), -1);
     points[d] = PVector.add(faceMiddle, invNormal.normalize().mult(tetraWidth*size));
     centroid = getCentroid();
+    showNote[d] = true;
     
     makeShape();
 
@@ -165,7 +172,10 @@ class Tetra{
     }
     
     centroid = getCentroid();
-        
+    
+    showNote[c] = true;
+    showNote[d] = true;
+    
     makeShape();
     
     connectedEdge[a] = true;
@@ -190,8 +200,9 @@ class Tetra{
       PVector mirrored = PVector.add(points[a], PVector.sub(points[a], point));
       points[1+i] = mirrored;
       notes[1+i] = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence + i);
+      showNote[1+i] = true;
     }
-    nextNoteInSequence = root.nextNoteInSequence +4;
+    nextNoteInSequence = root.nextNoteInSequence + 3;
     centroid = getCentroid();
         
     makeShape();
@@ -242,43 +253,43 @@ class Tetra{
     }
   }
   
+
   public void draw(){
     if(visible && tetraShape != null){
       shape(tetraShape);
     }
   }
   
-  public void drawNotes(PeasyCam cam){
+  float[] x = new float[4];
+  float[] y = new float[4];
+  float[] camPosition = cam.getPosition();
+  PVector camPosVec = new PVector(camPosition[0],camPosition[1],camPosition[2]);
+  
+  public void drawNotesPre(PeasyCam cam){
     if(!visible || tetraShape == null) {return;} 
-    textAlign(CENTER, CENTER);
-    color textColor = tetraShape.getFill(0);
-    fill(color(red(textColor)/1.5f,green(textColor)/1.5f,blue(textColor)/1.5f,alpha(textColor)*1.5f));
-    float[] x = new float[4];
-    float[] y = new float[4];
     for(int i = 0; i < notes.length; i++){
-      if(root || i == d || (element == Element.EDGE)){
+      if(showNote[i]){
         PVector oD = PVector.sub(points[i], centroid).normalize(); // Offset Direction
         x[i] = screenX(points[i].x+oD.x*textOffset, points[i].y+oD.y*textOffset, points[i].z+oD.z*textOffset);
         y[i] = screenY(points[i].x+oD.x*textOffset, points[i].y+oD.y*textOffset, points[i].z+oD.z*textOffset);
       }
     }
-    float[] camPosition = cam.getPosition();
-    PVector camPosVec = new PVector(camPosition[0],camPosition[1],camPosition[2]);
-    cam.beginHUD();
+    camPosition = cam.getPosition();
+    camPosVec = new PVector(camPosition[0],camPosition[1],camPosition[2]);
+  }
+  
+  public void drawNotesHUD(PeasyCam cam){
+    if(!visible || tetraShape == null) {return;} 
+    color textColor = tetraShape.getFill(0);
+    fill(color(red(textColor)/1.5f,green(textColor)/1.5f,blue(textColor)/1.5f,alpha(textColor)*1.5f));
+    
     for(int i = 0; i < notes.length; i++){
-      if(element == Element.FACE){
-        if(Tonnetz3D.removeOnNewRoot){
-          if(!root && i!=d) continue;
-        }else{
-          if(!initial && i!= d) continue;
-        }
+      if(showNote[i]){
+        float zoomedTextSize = textSize * 1000 / PVector.dist(points[i], camPosVec);
+        textSize(zoomedTextSize);
+        text(notes[i], x[i], y[i]);
       }
-      
-      float zoomedTextSize = textSize * 1000 / PVector.dist(points[i], camPosVec);
-      textSize(zoomedTextSize);
-      text(notes[i], x[i], y[i]);
     }
-    cam.endHUD();
   }
 
   public void play(Midi midi) {
@@ -335,7 +346,29 @@ class Tetra{
     if(tetraShape != null){
        tetraShape.setFill(color(red(tetraColor),green(tetraColor), blue(tetraColor),colorAlpha)); 
     }
-    
+  }
+  
+  public void freeConnections(){
+    for(int i = 0; i < 6; i ++){
+      if(i < 4){
+        connectedVertex[i] = false;
+        connectedFace[i] = false;
+      }
+      connectedEdge[i] = false;
+    }
+  }
+  
+  public void remove(ArrayList<Tetra> tetraStructure){
+    for(Tetra tetra : tetraStructure){
+      for(int i = 0; i < 4; i++){
+        if(showNote[i]){
+          int connectedVertexIndex = tetra.getVertex(points[i]);
+          if(connectedVertexIndex != -1){
+            tetra.showNote[connectedVertexIndex] = true; 
+          }
+        }
+      }
+    }
   }
 
   /*
@@ -471,6 +504,15 @@ class Tetra{
   
   public void setVertexConnected(int vertex, boolean connected){
     connectedVertex[vertex] = connected;
+  }
+  
+  public int getVertex(PVector point){
+    for(int i = 0; i < 4; i++){
+      if(point.dist(points[i]) < samePointError){
+        return i;
+      }
+    }
+    return -1;
   }
   
   public int[] getVertices(){
