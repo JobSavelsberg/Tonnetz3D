@@ -135,9 +135,9 @@ class Tetra{
   *         / B \    B is behind A         / B \
   *        D-----C                        D-----C
   */      
-  public Tetra(Tetra root, Set<Integer> edge, EdgeConnectType edgeConnectType){
-    String noteA = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence);
-    String noteB = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence + 1);
+  public Tetra(Tetra root, Set<Integer> edge, EdgeConnectType edgeConnectType, boolean offsetByOne){
+    String noteA = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence + (offsetByOne?1:0));
+    String noteB = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence + 1+ (offsetByOne?1:0));
     this.nextNoteInSequence = root.nextNoteInSequence + 3;
     points[a] = root.points[(int) edge.toArray()[0]];
     points[b] = root.points[(int) edge.toArray()[1]];

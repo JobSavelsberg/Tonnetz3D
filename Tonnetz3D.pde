@@ -22,7 +22,7 @@ public static boolean placeSingle;
 public enum PlaceMode {
   BUILD, EXPLORE,
 }
-public static Element element = Element.FACE;
+public static Element element = Element.VERTEX;
 
 void setPlaceMode(PlaceMode mode){
   if(mode == PlaceMode.BUILD){
@@ -97,7 +97,7 @@ void setup() {
 
   midi = new Midi(0, midiDevice); // channel 0
   
-  setPlaceMode(PlaceMode.BUILD);
+  setPlaceMode(PlaceMode.EXPLORE);
   tetraStructureHistory = new TetraStructureHistory(tetraStructure);
 
   createInitialTetra(22); // 22 = the "D" before "F#" in the sequence
@@ -254,13 +254,13 @@ void placeOnEdge(Tetra root, Set<Integer> edge){
   color c = nextColor();
   if(!root.getEdgeConnected(edge)){
     if(edgeConnectStraight){
-      Tetra straightTetra = new Tetra(root, edge, EdgeConnectType.EDGESTRAIGHT);
+      Tetra straightTetra = new Tetra(root, edge, EdgeConnectType.EDGESTRAIGHT, false);
       straightTetra.setColor(c);
       tetraStructure.add(straightTetra);
     }else{
-      Tetra leftTetra = new Tetra(root, edge, EdgeConnectType.EDGELEFT);
+      Tetra leftTetra = new Tetra(root, edge, EdgeConnectType.EDGELEFT, false);
       leftTetra.setColor(c);
-      Tetra rightTetra = new Tetra(root, edge, EdgeConnectType.EDGERIGHT);
+      Tetra rightTetra = new Tetra(root, edge, EdgeConnectType.EDGERIGHT, false);
       rightTetra.setColor(c);
       tetraStructure.add(leftTetra);
       tetraStructure.add(rightTetra);
@@ -286,7 +286,7 @@ void placeOnVertex(Tetra root, int vertex, boolean addLevel){
         Set<Integer> edge = new HashSet<Integer>();
         edge.add(topVertex); edge.add(0);
         //c = nextColor();
-        Tetra sideTetra = new Tetra(vertexTetra, edge, EdgeConnectType.EDGESTRAIGHT);
+        Tetra sideTetra = new Tetra(vertexTetra, edge, EdgeConnectType.EDGESTRAIGHT, true);
         sideTetra.setColor(c);
         tetraStructure.add(sideTetra);
       }
