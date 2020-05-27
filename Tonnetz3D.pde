@@ -7,77 +7,10 @@ public static final float farClip = 5000;
 public static final float distance = 300;
 public static float aspect;
 
-public static String midiDevice = "Microsoft GS Wavetable Synth"; // "loopMIDI Port";
-
-public enum Element {
-  FACE, EDGE, VERTEX,
-}
-// removeOnNewRoot: whether the old tetras should be removed or not when a new root is created
-public static boolean removeOnNewRoot; 
-public static boolean keepPreviousRoot;
-public static boolean allowReverseTravel = false;
-// placeSingle: whether only a single tetra should be connected to a single face of another tetra when clicked
-public static boolean placeSingle; 
-// The placemode is a set of combinations of the above booleans, giving a better interface for mode checks
-public enum PlaceMode {
-  BUILD, EXPLORE,
-}
-public static Element element = Element.VERTEX;
-
-void setPlaceMode(PlaceMode mode){
-  if(mode == PlaceMode.BUILD){
-    switch(element){
-      case VERTEX: removeOnNewRoot = false; keepPreviousRoot = false; placeSingle = true; break;
-      case EDGE: removeOnNewRoot = false; keepPreviousRoot = false; placeSingle = true; break;
-      case FACE: removeOnNewRoot = false; keepPreviousRoot = false; placeSingle = true; break;
-    }
-  }else if(mode == PlaceMode.EXPLORE){
-    switch(element){
-      case VERTEX: removeOnNewRoot = true; keepPreviousRoot = false; placeSingle = false; break;
-      case EDGE: removeOnNewRoot = true; keepPreviousRoot = false; placeSingle = false; break;
-      case FACE: removeOnNewRoot = true; keepPreviousRoot = true; placeSingle = false; break;
-    }
-  }
-
-  placeMode = mode;
-}
-
-void changeElement(Element newElement){
-  element = newElement;
-  setPlaceMode(placeMode);
-  println("Element set to: " + element);
-}
-
-public static PlaceMode placeMode;
-
-public static boolean edgeConnectStraight = true;
-
-/** 
-*  Sequence of notes added when a new root is created
-*  Follows the order of: major 3rd, minor 3rd, repeat.
-*  But is changable, it loops through the sequence using nextNote()
-*  Looping through the sequence with bigger steps can be done with nextNote(stepSize)
-*/
-static final String[] seq3rds = new String[]{
-  "A", "C#", "E", "G#", "B", "D#", "F#", "A#", "C#", "F", "G#",
-  "C", "D#", "G", "A#", "D", "F", "A", "C", "E", "G", "B", "D", "F#"
-}; 
-static final String[] seq5ths = new String[]{
-  "A", "E", "B", "F#", "C#", "G#", "D#", "A#", "F", "C", "G", "D"
-}; 
-static final String[] seq = seq3rds;
-
-/*
-* Similar to the sequence of notes a sequence of colors is used to make new generated triangles have different colors
-* Use nextColor() and nextColor(step)
-*/
-final color[] colors = new color[]{
-  color(255,0,0), color(0,255,0), color(0,0,255), color(255,255,0), color(0,255,255), color(255,0,255)
-};
-
 PeasyCam cam;
 Midi midi;
 RayPicker picker;
+UI ui;
 
 ArrayList<Tetra> tetraStructure = new ArrayList<Tetra>();
 TetraStructureHistory tetraStructureHistory;
@@ -86,6 +19,8 @@ ArrayList<NoteText> noteTexts = new ArrayList<NoteText>();
 void setup() {
   size(1080, 720, P3D); 
   textAlign(CENTER, CENTER);
+  
+  Options.initDefault();
 
   aspect = float(width)/float(height);  
   perspective(fov, aspect, nearClip, farClip);  
@@ -94,10 +29,8 @@ void setup() {
   
   picker = new RayPicker(cam);
 
-
-  midi = new Midi(0, midiDevice); // channel 0
+  midi = new Midi(0, Options.midiDevice); // channel 0
   
-  setPlaceMode(PlaceMode.EXPLORE);
   tetraStructureHistory = new TetraStructureHistory(tetraStructure);
 
   createInitialTetra(22); // 22 = the "D" before "F#" in the sequence
@@ -155,14 +88,14 @@ void drawNote(String note, float size, float x, float y){
 }
 TetraElement picked = null;
 void mousePressed(){ 
-  picked = picker.pick(mouseX,mouseY, tetraStructure, element);
+  picked = picker.pick(mouseX,mouseY, tetraStructure, Options.element);
   if(picked != null && picked.getTetra() != null){
     if(mouseButton==LEFT){
       picked.getTetra().play(midi);
     }else if(mouseButton==RIGHT){
       cam.setActive(false);
       if(!picked.alreadyConnected()){
-        switch(placeMode){
+        switch(Options.placeMode){
           case EXPLORE: makeNewRoot(picked.getTetra()); break;
           case BUILD: placeNewTetra(picked); break;
         }
@@ -182,13 +115,13 @@ void makeNewRoot(Tetra root){
   PVector centroid = root.centroid;
   cam.lookAt(centroid.x, centroid.y, centroid.z);
   root.setRoot(true);
-  if(removeOnNewRoot){
+  if(Options.removeOnNewRoot){
     removeAllButRoot(root);
     //Remove root status of previous root
-    if(keepPreviousRoot){
+    if(Options.keepPreviousRoot){
       tetraStructure.get(0).setRoot(false); 
       tetraStructure.get(0).removeNotesShownBy(root);
-    }else if(allowReverseTravel){
+    }else if(Options.allowReverseTravel){
       root.freeConnections();  
     }
   }
@@ -202,15 +135,15 @@ void makeNewRoot(Tetra root){
     tetraStructure.add(previousRoot);
   }
   
-  if(element == Element.FACE){
+  if(Options.element == Options.Element.FACE){
     for(int face : root.getFaces()){
       placeOnFace(root, face);
     }
-  }else if(element == Element.EDGE){
+  }else if(Options.element == Options.Element.EDGE){
     for(Set<Integer> edge : root.getEdges()){
       placeOnEdge(root, edge);
     }
-  }else if(element == Element.VERTEX){
+  }else if(Options.element == Options.Element.VERTEX){
     for(int vertex : root.getVertices()){
       placeOnVertex(root, vertex, true);
     }
@@ -221,7 +154,7 @@ void makeNewRoot(Tetra root){
 void removeAllButRoot(Tetra root){
  for(int i = tetraStructure.size()-1; i >= 0 ; i--){
     if(tetraStructure.get(i) == root) continue;
-    if(keepPreviousRoot && tetraStructure.get(i).isRoot()) continue;
+    if(Options.keepPreviousRoot && tetraStructure.get(i).isRoot()) continue;
     Tetra tetra = tetraStructure.get(i);
     tetra.remove(tetraStructure);
     tetraStructure.remove(i);
@@ -231,7 +164,7 @@ void removeAllButRoot(Tetra root){
 void placeNewTetra(TetraElement picked){
   PVector centroid = picked.getTetra().centroid;
   cam.lookAt(centroid.x, centroid.y, centroid.z);
-  switch(element){
+  switch(Options.element){
     case FACE: placeOnFace((TetraFace) picked); break;
     case EDGE: placeOnEdge((TetraEdge) picked); break;
     case VERTEX: placeOnVertex((TetraVertex) picked, false); break;
@@ -253,7 +186,7 @@ void placeOnEdge(TetraEdge tetraEdge){ placeOnEdge(tetraEdge.getTetra(), tetraEd
 void placeOnEdge(Tetra root, Set<Integer> edge){
   color c = nextColor();
   if(!root.getEdgeConnected(edge)){
-    if(edgeConnectStraight){
+    if(Options.edgeConnectStraight){
       Tetra straightTetra = new Tetra(root, edge, EdgeConnectType.EDGESTRAIGHT, false);
       straightTetra.setColor(c);
       tetraStructure.add(straightTetra);
@@ -303,11 +236,9 @@ void keyPressed() {
     case 'd': tetraStructure.get(3).play(midi); break;
     case 'f': tetraStructure.get(4).play(midi); break;
     case 'r': reset(); break;
-    case 't': setRemoveOnNewRoot(!removeOnNewRoot); break;
-    case 'y': setPlaceSingle(!placeSingle); break;
-    case 'u': changeElement(Element.FACE); break;
-    case 'i': changeElement(Element.EDGE);break;
-    case 'o': changeElement(Element.VERTEX); break;
+    case 'u': Options.setElement(Options.Element.FACE); break;
+    case 'i': Options.setElement(Options.Element.EDGE);break;
+    case 'o': Options.setElement(Options.Element.VERTEX); break;
     case 'm': midiRandomize = !midiRandomize; break;
     case ',': tetraStructureHistory.previous(); resetCamera(); break;
     case '.': tetraStructureHistory.next(); resetCamera(); break;
@@ -334,17 +265,6 @@ void lookAt(Tetra tetra){
   cam.lookAt(centroid.x, centroid.y, centroid.z);  
 }
 
-void setRemoveOnNewRoot(boolean newRemoveOnNewRoot){
-  // TODO: fix bugs
-  removeOnNewRoot = newRemoveOnNewRoot; 
-  println("removeOnNewRoot: "+removeOnNewRoot);
-}
-
-void setPlaceSingle(boolean newPlaceSingle){
-  placeSingle = newPlaceSingle; 
-  println("placeOnFace: "+placeSingle);
-}
-
 /*
 * The following functions and variables are used to loop through the sequences
 */
@@ -359,11 +279,12 @@ int currentColor = -1;
 public color nextColor(){ return nextColor(1); }
 public color nextColor(int i){
   currentColor += i;
-  return colors[currentColor%colors.length];
+  int[] newColor = Options.getColor(currentColor);
+  return color(newColor[0], newColor[1], newColor[2]);
 }
 
 public static String getNoteInSequence(int i){
-  return seq[i%seq.length];
+  return Options.getSeq(i);
 }
 
 public static PVector debugSphere = null;

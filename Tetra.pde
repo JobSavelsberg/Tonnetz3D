@@ -638,7 +638,7 @@ public class TetraElement{
   }
   
   public boolean alreadyConnected(){
-    switch(element){
+    switch(Options.element){
       case FACE: return tetra.getFaceConnected(((TetraFace)this).getFace());
       case EDGE: return tetra.getEdgeConnected(((TetraEdge)this).getEdge());
       case VERTEX: return tetra.getVertexConnected(((TetraVertex)this).getVertex());

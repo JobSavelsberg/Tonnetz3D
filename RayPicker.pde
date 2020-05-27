@@ -8,7 +8,7 @@ class RayPicker{
     this.cam = cam;
   }
   
-  public TetraElement pick(float x, float y,  ArrayList<Tetra> tetras, Tonnetz3D.Element element){
+  public TetraElement pick(float x, float y,  ArrayList<Tetra> tetras, Options.Element element){
     // --- get camera target position
     float a[] = cam.getLookAt().clone();
     PVector camTarget = new PVector(a[0], a[1], a[2]);
