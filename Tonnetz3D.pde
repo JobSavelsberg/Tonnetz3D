@@ -21,6 +21,7 @@ void setup() {
   textAlign(CENTER, CENTER);
   
   Options.initDefault();
+  ui = new UI(this);
 
   aspect = float(width)/float(height);  
   perspective(fov, aspect, nearClip, farClip);  
@@ -77,6 +78,7 @@ void draw() {
   for(Tetra tetra : tetraStructure){
     tetra.drawNotesHUD(cam);
   }
+  ui.draw();
   cam.endHUD();
 
   drawDebugSphere();  

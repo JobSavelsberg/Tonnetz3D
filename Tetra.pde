@@ -138,7 +138,7 @@ class Tetra{
   public Tetra(Tetra root, Set<Integer> edge, EdgeConnectType edgeConnectType, boolean offsetByOne){
     String noteA = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence + (offsetByOne?1:0));
     String noteB = Tonnetz3D.getNoteInSequence(root.nextNoteInSequence + 1+ (offsetByOne?1:0));
-    this.nextNoteInSequence = root.nextNoteInSequence + 3;
+    this.nextNoteInSequence = root.nextNoteInSequence + 2 + (offsetByOne?1:0);
     points[a] = root.points[(int) edge.toArray()[0]];
     points[b] = root.points[(int) edge.toArray()[1]];
     notes[a] = root.notes[(int) edge.toArray()[0]];
@@ -161,7 +161,7 @@ class Tetra{
     }else if(edgeConnectType == EdgeConnectType.EDGELEFT){
       lastVertex = PVector.add(getFaceMiddle(points[a], points[b], E), N.mult(tetraWidth*size));
       points[c] = lastVertex;
-      notes[c] = noteB; //<>//
+      notes[c] = noteB; //<>// //<>//
       points[d] = E;
       notes[d] = noteA;
     }else if(edgeConnectType == EdgeConnectType.EDGESTRAIGHT){
