@@ -29,7 +29,7 @@ public static class Options{
   // edgeConnectStraight: wether the tetra connected to another tetra's edge should be straight (as a single tetra mirroring the other tetra at the edge)
   //    or if it should be connected as two tetras connected to each other by face.
   public static boolean edgeConnectStraight;
-  
+   
   /** 
   *  Sequence of notes added when a new root is created
   *  Follows the order of: major 3rd, minor 3rd, repeat.
