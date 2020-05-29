@@ -121,6 +121,7 @@ void makeNewRoot(Tetra root) {
   PVector centroid = root.centroid;
   cam.lookAt(centroid.x, centroid.y, centroid.z);
   root.setRoot(true);
+  ui.setColor(root.getColor());
   if (Options.removeOnNewRoot) {
     removeAllButRoot(root);
     //Remove root status of previous root
@@ -180,6 +181,7 @@ void placeNewTetra(TetraElement picked) {
     placeOnVertex((TetraVertex) picked, false); 
     break;
   }
+  ui.setColor(tetraStructure.get(tetraStructure.size()-1).getColor());
   tetraStructureHistory.push();
 }
 

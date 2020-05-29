@@ -575,6 +575,10 @@ class Tetra{
     return 0;
   }
   
+  public color getColor(){
+    return tetraColor;  
+  }
+  
   /*
   *  For cloning
   */ 
