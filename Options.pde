@@ -1,5 +1,7 @@
 
 public static class Options{
+  public static int fontSize = 13;
+  
   public static String midiDevice; 
   public interface MidiDevices {
     String MSWaveTableSynth = "Microsoft GS Wavetable Synth";

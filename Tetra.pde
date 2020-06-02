@@ -45,7 +45,6 @@ class Tetra{
   private static final int midiMaxOctave = 4;
   // Drawing
   private static final float strokeWeight = 3;
-  private static final float textSize = 15;
   private static final float textOffset = 15;
   private static final float colorAlpha = 212;
   private final color strokeColor = color(200,200,200);
@@ -285,7 +284,7 @@ class Tetra{
     
     for(int i = 0; i < notes.length; i++){
       if(showNote[i]){
-        float zoomedTextSize = textSize * 1000 / PVector.dist(points[i], camPosVec);
+        float zoomedTextSize = Options.fontSize * 1000 / PVector.dist(points[i], camPosVec);
         textSize(zoomedTextSize);
         text(notes[i], x[i], y[i]);
       }

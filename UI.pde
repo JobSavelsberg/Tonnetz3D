@@ -52,6 +52,10 @@ public class UI{
   public void draw(){
     cp5.draw();
   }
+  
+  public void resizeWindow(){
+    placeMode.resizeWindow();
+  }
 }
 
 public class ImgToggle{
@@ -61,25 +65,31 @@ public class ImgToggle{
   color offColor = color(100);
   color onColor = color(255);
   float scale = 0.65;
-  int offset;
   String[] toggleNames;
   Toggle[] toggles;
   PImage[] images;
   PImage[][] toggleImages;
   int selected = 0;
   ToggleCallback toggleCallback = null;
+  int x, y;
+  int offset;
+  boolean floatRight;
   
   public ImgToggle(String[] names, int x, int y, PImage[] images, boolean right){
     this(names, x, y, images, 2, right);
   }
-  public ImgToggle(String[] names, int x, int y, PImage[] images, int offset, boolean right){
+  public ImgToggle(String[] names, int x, int y, PImage[] images, int offset, boolean floatRight){
     this.images = images;
     prepareButtonImages(images);
     int imgWidth = int(square.width*scale);
     toggles = new Toggle[names.length];
     toggleNames = names;
+    this.x = x;
+    this.y = y;
+    this.offset = offset;
+    this.floatRight = floatRight;
 
-    int posx = right ? width - (imgWidth*names.length + (names.length+1)*offset) : x;
+    int posx = floatRight ? width - (imgWidth*names.length + (names.length+1)*offset) : x;
     
     for(int i = 0; i < names.length; i++){
       toggles[i] = cp5.addToggle(names[i])
@@ -103,7 +113,7 @@ public class ImgToggle{
   
   public void prepareButtonImages(PImage[] images){
     toggleImages = new PImage[images.length][3];
-    PImage toggleSquare = colorImage(square, toggleSquareColor, false);
+    toggleSquare = colorImage(square, toggleSquareColor, false);
     for(int i = 0; i < images.length; i++){
       toggleImages[i][0] = addImage(toggleSquare, colorImage(images[i], offColor, true));
       toggleImages[i][1] = addImage(toggleSquare, colorImage(images[i], onColor, true));
@@ -165,6 +175,17 @@ public class ImgToggle{
       }else if(toggleID == selected){
         // Not allowed to turn off last remaining button
         toggles[toggleID].setValue(true);
+      }
+    }
+  }
+  
+  public void resizeWindow(){
+    if(floatRight){
+      int imageWidth = int(square.width*scale);
+      int posx = width - (imageWidth*toggles.length + (toggles.length+1)*this.offset);
+
+      for(int i = 0; i < toggles.length; i++){
+        toggles[i].setPosition(posx+i*imageWidth+(i+1)*this.offset,y);
       }
     }
   }

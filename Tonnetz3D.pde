@@ -12,6 +12,8 @@ Midi midi;
 RayPicker picker;
 UI ui;
 
+int w, h;
+
 ArrayList<Tetra> tetraStructure = new ArrayList<Tetra>();
 TetraStructureHistory tetraStructureHistory;
 ArrayList<NoteText> noteTexts = new ArrayList<NoteText>();
@@ -19,7 +21,13 @@ ArrayList<NoteText> noteTexts = new ArrayList<NoteText>();
 void setup() {
   size(1080, 720, P3D); 
   textAlign(CENTER, CENTER);
-
+  
+  surface.setResizable(true);
+  
+  w=width;
+  h=height ;
+  registerMethod ("pre", this ) ;
+  
   Options.initDefault();
   ui = new UI(this);
 
@@ -37,6 +45,24 @@ void setup() {
   createInitialTetra(22); // 22 = the "D" before "F#" in the sequence
 
   lastTime = millis();
+}
+
+void pre () {
+  if (w != width || h != height) {
+    Options.fontSize = Options.fontSize*(width/w);
+
+    w=width;
+    h=height;
+    // window size change 
+    updateCam();
+    ui.resizeWindow();
+  } 
+} 
+void updateCam(){
+  aspect = float(width)/float(height);  
+  perspective(fov, aspect, nearClip, farClip);    
+  cam.setViewport(0,0,width,height);
+  cam.feed();
 }
 
 /*
