@@ -263,7 +263,7 @@ class Tetra{
   float[] y = new float[4];
   float[] camPosition = cam.getPosition();
   PVector camPosVec = new PVector(camPosition[0],camPosition[1],camPosition[2]);
-  
+  PVector camLookAtVec;
   public void drawNotesPre(PeasyCam cam){
     if(!visible || tetraShape == null) {return;} 
     for(int i = 0; i < notes.length; i++){
@@ -275,6 +275,8 @@ class Tetra{
     }
     camPosition = cam.getPosition();
     camPosVec = new PVector(camPosition[0],camPosition[1],camPosition[2]);
+    float[] camLookAt = cam.getLookAt();
+    camLookAtVec = PVector.sub(new PVector(camLookAt[0],camLookAt[1],camLookAt[2]), camPosVec);
   }
   
   public void drawNotesHUD(PeasyCam cam){
@@ -284,9 +286,11 @@ class Tetra{
     
     for(int i = 0; i < notes.length; i++){
       if(showNote[i]){
-        float zoomedTextSize = Options.fontSize * 1000 / PVector.dist(points[i], camPosVec);
-        textSize(zoomedTextSize);
-        text(notes[i], x[i], y[i]);
+        if(camLookAtVec.dot(PVector.sub(points[i], camPosVec)) > 0){
+          float zoomedTextSize = Options.fontSize * 1000 / PVector.dist(points[i], camPosVec);
+          textSize(zoomedTextSize);
+          text(notes[i], x[i], y[i]);
+        }
       }
     }
   }

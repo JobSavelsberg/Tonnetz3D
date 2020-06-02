@@ -49,11 +49,9 @@ void setup() {
 
 void pre () {
   if (w != width || h != height) {
-    Options.fontSize = Options.fontSize*(width/w);
-
+    Options.fontSize = round(float(Options.fontSize)*(float(width)/w));
     w=width;
     h=height;
-    // window size change 
     updateCam();
     ui.resizeWindow();
   } 
