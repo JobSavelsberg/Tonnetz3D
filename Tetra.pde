@@ -160,7 +160,7 @@ class Tetra{
     }else if(edgeConnectType == EdgeConnectType.EDGELEFT){
       lastVertex = PVector.add(getFaceMiddle(points[a], points[b], E), N.mult(tetraWidth*size));
       points[c] = lastVertex;
-      notes[c] = noteB; //<>//
+      notes[c] = noteB; //<>// //<>// //<>//
       points[d] = E;
       notes[d] = noteA;
     }else if(edgeConnectType == EdgeConnectType.EDGESTRAIGHT){

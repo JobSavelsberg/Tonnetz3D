@@ -15,7 +15,7 @@ UI ui;
 int w, h;
 
 ArrayList<Tetra> tetraStructure = new ArrayList<Tetra>();
-TetraStructureHistory tetraStructureHistory;
+public TetraStructureHistory tetraStructureHistory;
 ArrayList<NoteText> noteTexts = new ArrayList<NoteText>();
 
 void setup() {
@@ -309,12 +309,10 @@ void keyPressed() {
     midiRandomize = !midiRandomize; 
     break;
   case ',': 
-    tetraStructureHistory.previous(); 
-    resetCamera(); 
+    undo();
     break;
   case '.': 
-    tetraStructureHistory.next(); 
-    resetCamera(); 
+    redo();
     break;
   }
 }
@@ -328,6 +326,15 @@ void reset() {
   tetraStructureHistory.push();
 }
 
+void undo(){
+  tetraStructureHistory.previous(); 
+  resetCamera(); 
+}
+
+void redo(){
+  tetraStructureHistory.next(); 
+  resetCamera(); 
+}
 void resetCamera() {
   if (tetraStructure.size() > 0) {
     lookAt(tetraStructure.get(0));

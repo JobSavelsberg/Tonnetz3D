@@ -5,15 +5,19 @@ public class UI{
   PImage faceImg = loadImage("assets/img/face.png"); 
   PImage edgeImg = loadImage("assets/img/edge.png"); 
   PImage vertexImg = loadImage("assets/img/vertex.png"); 
-  PImage[] faceImgs, edgeImgs, vertexImgs;
   
   PImage exploreImg = loadImage("assets/img/explore.png");
   PImage buildImg= loadImage("assets/img/build.png");
-  PImage[] exploreImgs, buildImgs;
+  
+  PImage resetImg = loadImage("assets/img/reset.png");
+  PImage undoImg= loadImage("assets/img/undo.png");
+  PImage redoImg= loadImage("assets/img/redo.png");
   
   ImgToggle element;
   ImgToggle placeMode;
   
+  ImgButtonGroup stateControls;
+
   public UI(PApplet app){    
     cp5 = new ControlP5(app);
     cp5.setAutoDraw(false);
@@ -41,11 +45,25 @@ public class UI{
         }
       }
     });
+    
+    stateControls = new ImgButtonGroup(new String[]{"reset", "undo", "redo"}, 0, 0, new PImage[]{resetImg, undoImg, redoImg}, true, true);
+    stateControls.setCallback(new ButtonCallback() {
+      void buttonCallbackMethod(String buttonName){
+        switch(buttonName){
+            case "reset": reset(); break;
+            case "undo": undo(); break;
+            case "redo": redo(); break;
+        }
+      }
+    });
+    
+    
   }
   
   public void setColor(color c){
     element.setOnColor(c);
     placeMode.setOnColor(c);
+    stateControls.setOnColor(c);
   }
   
   
@@ -54,8 +72,143 @@ public class UI{
   }
   
   public void resizeWindow(){
+    element.resizeWindow();
     placeMode.resizeWindow();
+    stateControls.resizeWindow();
   }
+}
+
+public class ImgButtonGroup{
+  final PImage square = loadImage("assets/img/square.png"); 
+  PImage buttonSquare;
+  color squareColor = color(0);
+  color offColor = color(100);
+  color onColor = color(255);
+  float scale = 0.55;
+  String[] buttonNames;
+  Button[] buttons;
+  PImage[] images;
+  PImage[][] buttonImages;
+  ButtonCallback buttonCallback = null;
+  int x, y;
+  int offset;
+  boolean floatRight;
+  boolean floatBottom;
+
+  public ImgButtonGroup(String[] names, int x, int y, PImage[] images, boolean right, boolean bottom){
+    this(names, x, y, images, 2, right, bottom);
+  }
+  public ImgButtonGroup(String[] names, int x, int y, PImage[] images, int offset, boolean floatRight, boolean floatBottom){
+    this.images = images;
+    prepareButtonImages(images);
+    int imgWidth = int(square.width*scale);
+    buttons = new Button[names.length];
+    buttonNames = names;
+    this.x = x;
+    this.y = y;
+    this.offset = offset;
+    this.floatRight = floatRight;
+    this.floatBottom = floatBottom;
+
+    int posx = floatRight ? width - (imgWidth*names.length + (names.length+1)*offset) : x;
+    int posy = floatBottom ? height - imgWidth -offset: y;
+    for(int i = 0; i < names.length; i++){
+      buttons[i] = cp5.addButton(names[i])
+       .setImages(buttonImages[i])
+       .setSize(imgWidth, imgWidth)
+       .setPosition(posx+i*imgWidth+(i+1)*offset,posy);
+       
+      buttons[i].addCallback(new ButtonCallbackListener(i));
+    }  
+  }
+  
+   public void setOnColor(color c){
+    onColor = c;
+    prepareButtonImages(images);
+    for(int i = 0; i < buttons.length; i++){
+      buttons[i].setImages(buttonImages[i]);
+    }
+  }
+  
+  public void prepareButtonImages(PImage[] images){
+    buttonImages = new PImage[images.length][3];
+    buttonSquare = colorImage(square, squareColor, false);
+    for(int i = 0; i < images.length; i++){
+      buttonImages[i][0] = addImage(buttonSquare, colorImage(images[i], offColor, true));
+      buttonImages[i][1] = addImage(buttonSquare, colorImage(images[i], onColor, true));
+      buttonImages[i][2] = buttonImages[i][1].copy();
+      
+      for(int j = 0; j < 3; j++){
+        buttonImages[i][j].resize(int(float(buttonImages[i][j].width)*scale),int(float(buttonImages[i][j].height)*scale));
+      }
+    }
+  }
+  
+  public PImage addImage(PImage a, PImage b){
+    PImage result = a.copy();
+    result.blend(b,0,0,b.width,b.height,0,0,a.width,a.height, ADD);
+    return result;
+  }
+  
+  final float s = 0.5f;//saturation
+  final float l = 1.5f;
+  public PImage colorImage(PImage image, color c, boolean black){
+    PImage newImage = image.copy();
+    for (int i = 0; i < image.width*image.height; i++) { 
+      if(black){
+        newImage.pixels[i] = color(red(c)*l, green(c)*l, blue(c)*l, alpha(image.pixels[i]));  
+      }else{
+        newImage.pixels[i] = color(
+          red(image.pixels[i])+(red(c)-127)*s, 
+          green(image.pixels[i])+(green(c)-127)*s, 
+          blue(image.pixels[i])+(blue(c)-127)*s, 
+          alpha(image.pixels[i])
+        ); 
+      }
+    }
+    return newImage;
+  }
+  
+  public void setCallback(ButtonCallback buttonCallback){
+    this.buttonCallback= buttonCallback;
+  }
+  
+  public void callback(int buttonID, CallbackEvent event){
+    if(event.getAction() == ControlP5.ACTION_RELEASE){
+      if(buttonCallback != null){
+        buttonCallback.buttonCallbackMethod(buttonNames[buttonID]);
+      }
+    }
+  }
+  
+  public void resizeWindow(){
+    if(floatRight){
+      int imageWidth = int(square.width*scale);
+      int posx = width - (imageWidth*buttons.length + (buttons.length+1)*this.offset);
+      int posy = floatBottom ? height - imageWidth -offset: y;
+
+      for(int i = 0; i < buttons.length; i++){
+        buttons[i].setPosition(posx+i*imageWidth+(i+1)*this.offset,posy);
+      }
+    }
+  }
+  
+  public class ButtonCallbackListener implements CallbackListener{
+    int toggleID;
+    
+    public ButtonCallbackListener(int ID){
+      super();
+      toggleID = ID;
+    }
+    
+    public void controlEvent(CallbackEvent event) {
+      callback(toggleID, event);
+    }
+  }
+}
+
+interface ButtonCallback { 
+  void buttonCallbackMethod(String buttonName);
 }
 
 public class ImgToggle{
@@ -64,7 +217,7 @@ public class ImgToggle{
   color toggleSquareColor = color(0);
   color offColor = color(100);
   color onColor = color(255);
-  float scale = 0.65;
+  float scale = 0.55;
   String[] toggleNames;
   Toggle[] toggles;
   PImage[] images;
