@@ -77,7 +77,7 @@ public static class Options{
       switch(element){
         case VERTEX: removeOnNewRoot = true; keepPreviousRoot = false; placeSingle = false; break;
         case EDGE: removeOnNewRoot = true; keepPreviousRoot = false; placeSingle = false; break;
-        case FACE: removeOnNewRoot = true; keepPreviousRoot = true; placeSingle = false; break;
+        case FACE: removeOnNewRoot = true; keepPreviousRoot = false; placeSingle = false; break;
       }
     }
   }
@@ -87,7 +87,7 @@ public static class Options{
     element = Element.FACE;
     placeMode = PlaceMode.EXPLORE;
     updateSituationSettings();
-    allowReverseTravel = false;
+    allowReverseTravel = true;
     edgeConnectStraight = true;
     showNotes = true;
     seq = seq3rds;
