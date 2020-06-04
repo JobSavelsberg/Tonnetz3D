@@ -135,6 +135,9 @@ void mousePressed() {
           break;
         }
       }
+    } else if(mouseButton == CENTER){
+      cam.setActive(false);
+      lookAtTetra(picked.getTetra());
     }
   }
 }
@@ -147,8 +150,7 @@ void mouseReleased() {
 }
 
 void makeNewRoot(Tetra root) {
-  PVector centroid = root.centroid;
-  cam.lookAt(centroid.x, centroid.y, centroid.z);
+  lookAtTetra(root);
   root.setRoot(true);
   ui.setColor(root.getColor());
   if (Options.removeOnNewRoot) {
@@ -197,8 +199,7 @@ void removeAllButRoot(Tetra root) {
 }
 
 void placeNewTetra(TetraElement picked) {
-  PVector centroid = picked.getTetra().centroid;
-  cam.lookAt(centroid.x, centroid.y, centroid.z);
+  lookAtTetra(picked.getTetra());
   switch(Options.element) {
   case FACE: 
     placeOnFace((TetraFace) picked); 
@@ -276,6 +277,11 @@ void placeOnVertex(Tetra root, int vertex, boolean addLevel) {
   }
 }
 
+void lookAtTetra(Tetra tetra){
+  PVector centroid = tetra.centroid;
+  cam.lookAt(centroid.x, centroid.y, centroid.z);  
+}
+
 void changedExploreElement(){
   Tetra root = tetraStructure.get(0);
   root.freeConnections();
@@ -342,13 +348,8 @@ void redo(){
 }
 void resetCamera() {
   if (tetraStructure.size() > 0) {
-    lookAt(tetraStructure.get(0));
+    lookAtTetra(tetraStructure.get(0));
   }
-}
-
-void lookAt(Tetra tetra) {
-  PVector centroid = tetra.getCentroid();
-  cam.lookAt(centroid.x, centroid.y, centroid.z);
 }
 
 /*
