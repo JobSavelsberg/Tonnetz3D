@@ -7,24 +7,27 @@ public class UI{
   PImage vertexImg = loadImage("assets/img/vertex.png"); 
   
   PImage exploreImg = loadImage("assets/img/explore.png");
-  PImage buildImg= loadImage("assets/img/build.png");
+  PImage buildImg = loadImage("assets/img/build.png");
   
   PImage resetImg = loadImage("assets/img/reset.png");
-  PImage undoImg= loadImage("assets/img/undo.png");
-  PImage redoImg= loadImage("assets/img/redo.png");
+  PImage undoImg = loadImage("assets/img/undo.png");
+  PImage redoImg = loadImage("assets/img/redo.png");
   
+  PImage fontImg = loadImage("assets/img/font.png");
+
   ImgToggle element;
   ImgToggle placeMode;
-  
+  ImgToggle fontToggle;
+
   ImgButtonGroup stateControls;
 
   public UI(PApplet app){    
     cp5 = new ControlP5(app);
     cp5.setAutoDraw(false);
     
-    element = new ImgToggle(new String[]{"face", "edge", "vertex"}, 0, 0, new PImage[]{faceImg, edgeImg, vertexImg}, false);
+    element = new ImgToggle(new String[]{"face", "edge", "vertex"}, 0, 0, new PImage[]{faceImg, edgeImg, vertexImg}, false, false, false);
     element.setCallback(new ToggleCallback() {
-      void toggleCallbackMethod(String toggleName){
+      void toggleCallbackMethod(String toggleName, boolean on){
         switch(toggleName){
             case "face": Options.setElement(Options.Element.FACE); break;
             case "edge": Options.setElement(Options.Element.EDGE); break;
@@ -36,12 +39,22 @@ public class UI{
       }
     });
     
-    placeMode = new ImgToggle(new String[]{"explore", "build"}, 0, 0, new PImage[]{exploreImg, buildImg}, true);
+    placeMode = new ImgToggle(new String[]{"explore", "build"}, 0, 0, new PImage[]{exploreImg, buildImg}, true, false, false);
     placeMode.setCallback(new ToggleCallback() {
-      void toggleCallbackMethod(String toggleName){
+      void toggleCallbackMethod(String toggleName, boolean on){
         switch(toggleName){
             case "explore": Options.setPlaceMode(Options.PlaceMode.EXPLORE); break;
             case "build": Options.setPlaceMode(Options.PlaceMode.BUILD); break;
+        }
+      }
+    });
+    
+    fontToggle = new ImgToggle(new String[]{"font"}, 0, 0, new PImage[]{fontImg}, false, true, true);
+    fontToggle.setOn(0);
+    fontToggle.setCallback(new ToggleCallback() {
+      void toggleCallbackMethod(String toggleName, boolean on){
+        switch(toggleName){
+            case "font": Options.showNotes = on; break;
         }
       }
     });
@@ -63,6 +76,7 @@ public class UI{
   public void setColor(color c){
     element.setOnColor(c);
     placeMode.setOnColor(c);
+    fontToggle.setOnColor(c);
     stateControls.setOnColor(c);
   }
   
@@ -74,6 +88,7 @@ public class UI{
   public void resizeWindow(){
     element.resizeWindow();
     placeMode.resizeWindow();
+    fontToggle.resizeWindow();
     stateControls.resizeWindow();
   }
 }
@@ -182,9 +197,9 @@ public class ImgButtonGroup{
   }
   
   public void resizeWindow(){
-    if(floatRight){
+    if(floatRight || floatBottom){
       int imageWidth = int(square.width*scale);
-      int posx = width - (imageWidth*buttons.length + (buttons.length+1)*this.offset);
+      int posx = floatRight? width - (imageWidth*buttons.length + (buttons.length+1)*this.offset): x;
       int posy = floatBottom ? height - imageWidth -offset: y;
 
       for(int i = 0; i < buttons.length; i++){
@@ -223,37 +238,48 @@ public class ImgToggle{
   PImage[] images;
   PImage[][] toggleImages;
   int selected = 0;
+  boolean[] toggled;
   ToggleCallback toggleCallback = null;
   int x, y;
   int offset;
   boolean floatRight;
-  
-  public ImgToggle(String[] names, int x, int y, PImage[] images, boolean right){
-    this(names, x, y, images, 2, right);
+  boolean floatBottom;
+  boolean individualToggle;
+
+  public ImgToggle(String[] names, int x, int y, PImage[] images, boolean right, boolean bottom, boolean individualToggle){
+    this(names, x, y, images, 2, right, bottom, individualToggle);
   }
-  public ImgToggle(String[] names, int x, int y, PImage[] images, int offset, boolean floatRight){
+  public ImgToggle(String[] names, int x, int y, PImage[] images, int offset, boolean floatRight, boolean floatBottom, boolean individualToggle){
     this.images = images;
     prepareButtonImages(images);
     int imgWidth = int(square.width*scale);
     toggles = new Toggle[names.length];
+    toggled = new boolean[names.length];
     toggleNames = names;
     this.x = x;
     this.y = y;
     this.offset = offset;
     this.floatRight = floatRight;
+    this.floatBottom = floatBottom;
+    this.individualToggle = individualToggle;
 
     int posx = floatRight ? width - (imgWidth*names.length + (names.length+1)*offset) : x;
-    
+    int posy = floatBottom ? height - imgWidth -offset: y;
+
     for(int i = 0; i < names.length; i++){
       toggles[i] = cp5.addToggle(names[i])
        .setValue(i == selected)
        .setImages(toggleImages[i])
        .setSize(imgWidth, imgWidth)
-       .setPosition(posx+i*imgWidth+(i+1)*offset,y);
+       .setPosition(posx+i*imgWidth+(i+1)*offset,posy);
        
       toggles[i].addCallback(new ToggleCallbackListener(i));
     }  
     setSelected(0);
+  }
+  
+  public void setOn(int toggleID){
+    toggled[toggleID] = true;
   }
   
   public void setOnColor(color c){
@@ -316,29 +342,36 @@ public class ImgToggle{
   
   public void callback(int toggleID, CallbackEvent event){
     if(event.getAction() == ControlP5.ACTION_PRESS){
-      if(toggles[toggleID].getValue() > 0){
-        for(int i = 0; i< toggles.length; i++){
-          toggles[i].setValue(false);
+      if(individualToggle){
+        toggled[toggleID] =! toggled[toggleID];
+        toggles[toggleID].setValue(toggled[toggleID]);
+        toggleCallback.toggleCallbackMethod(toggleNames[selected], toggled[toggleID]);
+      }else{
+        if(toggles[toggleID].getValue() > 0){
+          for(int i = 0; i< toggles.length; i++){
+            toggles[i].setValue(false);
+          }
+          toggles[toggleID].setValue(true);
+          selected = toggleID;
+          if(toggleCallback != null){
+            toggleCallback.toggleCallbackMethod(toggleNames[selected], true);
+          }
+        }else if(toggleID == selected){
+          // Not allowed to turn off last remaining button
+          toggles[toggleID].setValue(true);
         }
-        toggles[toggleID].setValue(true);
-        selected = toggleID;
-        if(toggleCallback != null){
-          toggleCallback.toggleCallbackMethod(toggleNames[selected]);
-        }
-      }else if(toggleID == selected){
-        // Not allowed to turn off last remaining button
-        toggles[toggleID].setValue(true);
       }
     }
   }
   
   public void resizeWindow(){
-    if(floatRight){
+    if(floatRight || floatBottom){
       int imageWidth = int(square.width*scale);
-      int posx = width - (imageWidth*toggles.length + (toggles.length+1)*this.offset);
+      int posx = floatRight? width - (imageWidth*toggles.length + (toggles.length+1)*this.offset): x;
+      int posy = floatBottom ? height - imageWidth -offset: y;
 
       for(int i = 0; i < toggles.length; i++){
-        toggles[i].setPosition(posx+i*imageWidth+(i+1)*this.offset,y);
+        toggles[i].setPosition(posx+i*imageWidth+(i+1)*this.offset,posy);
       }
     }
   }
@@ -358,5 +391,5 @@ public class ImgToggle{
 }
 
 interface ToggleCallback { 
-  void toggleCallbackMethod(String toggleName);
+  void toggleCallbackMethod(String toggleName, boolean on);
 }

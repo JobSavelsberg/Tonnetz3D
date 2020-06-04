@@ -96,12 +96,17 @@ void draw() {
   background(255);
   for (Tetra tetra : tetraStructure) {
     tetra.draw();
-    tetra.drawNotesPre(cam);
+    if(Options.showNotes){
+      tetra.drawNotesPre(cam);
+    }
   }
   cam.beginHUD();
-  for (Tetra tetra : tetraStructure) {
-    tetra.drawNotesHUD(cam);
+  if(Options.showNotes){
+    for (Tetra tetra : tetraStructure) {
+      tetra.drawNotesHUD(cam);
+    }
   }
+
   ui.draw();
   cam.endHUD();
 

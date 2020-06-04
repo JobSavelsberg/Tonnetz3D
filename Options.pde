@@ -1,6 +1,7 @@
 
 public static class Options{
   public static int fontSize = 13;
+  public static boolean showNotes;
   
   public static String midiDevice; 
   public interface MidiDevices {
@@ -88,6 +89,7 @@ public static class Options{
     updateSituationSettings();
     allowReverseTravel = false;
     edgeConnectStraight = true;
+    showNotes = true;
     seq = seq3rds;
   }
 }
