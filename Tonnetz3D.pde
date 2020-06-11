@@ -21,7 +21,6 @@ ArrayList<NoteText> noteTexts = new ArrayList<NoteText>();
 void setup() {
   size(1080, 720, P3D); 
   textAlign(CENTER, CENTER);
-  
   surface.setResizable(true);
   
   w=width;
@@ -54,6 +53,7 @@ void pre () {
     h=height;
     updateCam();
     ui.resizeWindow();
+    cp5.setGraphics(this,0,0);
   } 
 } 
 void updateCam(){

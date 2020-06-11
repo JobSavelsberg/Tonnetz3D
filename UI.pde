@@ -99,7 +99,7 @@ public class UI{
     for(Options.Sequence s : Options.Sequence.values()){
       seqdd.addItem(s.toString(),s);
     }
-    
+    seqdd.close();
     seqdd.onPress(new CallbackListener(){
       public void controlEvent(CallbackEvent event) {
         float[] position = seqdd.getPosition();
@@ -177,6 +177,7 @@ public class UI{
     placeMode.resizeWindow();
     fontToggle.resizeWindow();
     stateControls.resizeWindow();
+    cp5.draw();
   }
 }
 
@@ -288,10 +289,11 @@ public class ImgButtonGroup{
       int imageWidth = int(square.width*scale);
       int posx = floatRight? width - (imageWidth*buttons.length + (buttons.length+1)*this.offset): x;
       int posy = floatBottom ? height - imageWidth -offset: y;
-
+      
       for(int i = 0; i < buttons.length; i++){
-        buttons[i].setPosition(posx+i*imageWidth+(i+1)*this.offset,posy);
-      }
+        float[] position = new float[]{posx+i*imageWidth+(i+1)*offset,posy};
+        buttons[i].setPosition(position);
+      }  
     }
   }
   
