@@ -328,7 +328,7 @@ void keyPressed() {
   }
 }
 
-void reset() {
+public void reset() {
   tetraStructureHistory.reset();
   tetraStructure.clear();
   currentNote = -1;

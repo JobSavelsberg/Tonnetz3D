@@ -1,7 +1,7 @@
 import controlP5.*;
 
 ControlP5 cp5;
-public class UI{
+public class UI{  
   PImage faceImg = loadImage("assets/img/face.png"); 
   PImage edgeImg = loadImage("assets/img/edge.png"); 
   PImage vertexImg = loadImage("assets/img/vertex.png"); 
@@ -15,15 +15,24 @@ public class UI{
   
   PImage fontImg = loadImage("assets/img/font.png");
 
+  ControlFont cf;
+
   ImgToggle element;
   ImgToggle placeMode;
   ImgToggle fontToggle;
 
   ImgButtonGroup stateControls;
-
+  
+  DropdownList seqdd;
+  int listWidth = 210;
+  boolean shouldOpen = false;
+  boolean shouldClose = false;
+  
   public UI(PApplet app){    
     cp5 = new ControlP5(app);
     cp5.setAutoDraw(false);
+    cf = new ControlFont(createFont("Lucida Sans",20));
+
     
     element = new ImgToggle(new String[]{"face", "edge", "vertex"}, 0, 0, new PImage[]{faceImg, edgeImg, vertexImg}, false, false, false);
     element.setCallback(new ToggleCallback() {
@@ -69,8 +78,82 @@ public class UI{
         }
       }
     });
+    seqdd =new DropdownList(cp5, Options.Sequence.THIRDS.toString());
+    seqdd.setPosition(2, 73);
+    seqdd.setSize(listWidth,200);
+    seqdd.setBarHeight(30);
+    seqdd.setItemHeight(30);
+    seqdd.setColorBackground(color(0,0,0,50));
+    seqdd.setColorCaptionLabel(color(255));      // Color of lil dropdown arrow
+    seqdd.setColorForeground(color(0,0,0,50));    // BackgroundColor when hover
+    seqdd.setColorValueLabel(color(100));  // Color of idle text
+    seqdd.setColorActive(color(100));
+    seqdd.getCaptionLabel().setFont(cf);
+    seqdd.getValueLabel().setFont(cf);
+    seqdd.getCaptionLabel().getStyle().marginTop = 7;
+    seqdd.getCaptionLabel().getStyle().marginBottom = 5;
+    seqdd.getCaptionLabel().getStyle().marginLeft = 10;
+    seqdd.getValueLabel().getStyle().marginTop = 7;
+    seqdd.getValueLabel().getStyle().marginBottom = 5;
+    seqdd.getValueLabel().getStyle().marginLeft = 10;
+    for(Options.Sequence s : Options.Sequence.values()){
+      seqdd.addItem(s.toString(),s);
+    }
     
-    
+    seqdd.onPress(new CallbackListener(){
+      public void controlEvent(CallbackEvent event) {
+        float[] position = seqdd.getPosition();
+        int elementHeight = 30;
+        for(int i = 0; i < Options.Sequence.values().length + 1; i++){
+          if(mouseX > position[0] && mouseX < position[0]+listWidth){
+            if(mouseY > position[1] + i*elementHeight && mouseY < position[1] + (i+1)*elementHeight){
+              if(i>0){
+                seqdd.setValue(i-1);
+                seqdd.changeValue(i-1);
+                seqdd.close();
+                seqdd.update();
+                seqdd.setCaptionLabel(Options.Sequence.values()[i-1].toString());
+                Options.setNewSequence(Options.Sequence.values()[i-1]);
+                reset();
+              }else{
+                if(seqdd.isOpen()){
+                  shouldClose = true;
+                }else{
+                  shouldOpen = true;
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+    seqdd.onRelease(new CallbackListener(){
+      public void controlEvent(CallbackEvent event) {
+        if(shouldOpen){
+          seqdd.open();
+          shouldOpen = false;
+        }
+        if(shouldClose){
+          seqdd.close();  
+          shouldClose = false;
+        }
+        
+      }
+    });
+
+  }
+
+
+  void customize(DropdownList ddl) {
+    // a convenience function to customize a DropdownList
+    ddl.setItemHeight(20);
+    ddl.setBarHeight(15);
+    for (int i=0;i<40;i++) {
+      ddl.addItem("item "+i, i);
+    }
+    //ddl.scroll(0);
+    ddl.setColorBackground(color(60));
+    ddl.setColorActive(color(255, 128));
   }
   
   public void setColor(color c){
@@ -78,6 +161,10 @@ public class UI{
     placeMode.setOnColor(c);
     fontToggle.setOnColor(c);
     stateControls.setOnColor(c);
+    float s = 1.4;
+    color saturatedColor = color(min(red(c)*s,255),min(green(c)*s,255),min(blue(c)*s,255));
+    //seqdd.setColorLabel(saturatedColor); 
+    seqdd.setColorForeground(saturatedColor);
   }
   
   

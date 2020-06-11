@@ -38,17 +38,39 @@ public static class Options{
   *  Follows the order of: major 3rd, minor 3rd, repeat.
   *  But is changable, it loops through the sequence using nextNote()
   *  Looping through the sequence with bigger steps can be done with nextNote(stepSize)
-  */
-  static final String[] seq3rds = new String[]{
-    "A", "C#", "E", "G#", "B", "D#", "F#", "A#", "C#", "F", "G#",
-    "C", "D#", "G", "A#", "D", "F", "A", "C", "E", "G", "B", "D", "F#"
-  }; 
-  static final String[] seq5ths = new String[]{
-    "A", "E", "B", "F#", "C#", "G#", "D#", "A#", "F", "C", "G", "D"
-  }; 
-  static String[] seq;
-  public static String getSeq(int i){ return seq[i%seq.length];};
-  
+  */  
+  public enum Sequence{
+    THIRDS(new String[]{
+      "A", "C#", "E", "G#", "B", "D#", "F#", "A#", "C#", "F", "G#",
+      "C", "D#", "G", "A#", "D", "F", "A", "C", "E", "G", "B", "D", "F#"
+    }),
+    FOURTHS(new String[]{
+      "A", "D", "G", "C", "F", "A#", "D#", "G#", "C#", "F#", "B", "E"
+    }),
+    FIFTHS(new String[]{
+      "A", "E", "B", "F#", "C#", "G#", "D#", "A#", "F", "C", "G", "D"
+    }),
+    CHROMATIC(new String[]{
+      "A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#" 
+    }),
+    RANDOM(Chords.randomSequence(100));
+
+    public String[] notes;
+    
+    private Sequence(String[] notes){
+      this.notes = notes;
+    }
+  }
+  public static Sequence seq;
+  public static String getSeq(int i){ 
+    return seq.notes[i%seq.notes.length];
+  };
+  public static void setNewSequence(Sequence newSequence){
+    if(newSequence == Sequence.RANDOM){
+      Sequence.RANDOM.notes = Chords.randomSequence(100);
+    }
+    seq = newSequence;
+  }
   /*
   * Similar to the sequence of notes a sequence of colors is used to make new generated triangles have different colors
   * Use nextColor() and nextColor(step)
@@ -90,6 +112,6 @@ public static class Options{
     allowReverseTravel = true;
     edgeConnectStraight = true;
     showNotes = true;
-    seq = seq3rds;
+    seq = Sequence.THIRDS;
   }
 }

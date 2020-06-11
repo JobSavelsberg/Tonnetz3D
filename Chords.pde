@@ -2,6 +2,9 @@ import java.lang.*;
 
 public static class Chords{
   static final int OCTAVE = 12;
+  static final String[] notesSharp = new String[]{
+    "A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"
+  };
   static final ArrayList<String> noteNames = new ArrayList<String>(Arrays.asList(
     "A","A#","Bb","B","C","C#","Db","D","D#","Eb","E","F","F#","Gb","G","G#","Ab"
   ));
@@ -66,5 +69,18 @@ public static class Chords{
     int[] sorted = pitches.clone();
     Arrays.sort(sorted);
     return sorted;
+  }
+  
+  public static String randomNote(){
+    float random = (float) Math.random();
+    return notesSharp[int(random*12)];
+  }
+  
+  public static String[] randomSequence(int length){
+    String[] randomSequence = new String[length];
+    for(int i = 0; i < length; i++){
+        randomSequence[i] = randomNote();
+    }
+    return randomSequence;
   }
 }
